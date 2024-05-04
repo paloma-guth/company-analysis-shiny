@@ -63,6 +63,10 @@ library(nytimes)
 
 nytimes_key("csHR8NIDuVovzJ9A15iyiEmR7aVAGBK9")
 
+archive<-ny_archive(year, month)
+year<-2023
+month<-1:4
+
 archive <- ny_archive(2023, 2)
 
 main_headlines <- list()
@@ -72,67 +76,11 @@ for(i in archive){
   main_headlines <- c(main_headlines, main_headline)
 }
 
-main_headlines_df <- data.frame(Main_Headline = unlist(main_headlines))
-str_detect(main_headlines_df$Main_Headline, "Officers")
-main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
-
+tesla_headlines<-main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
+tesla_headlines_df <- data.frame(tesla_headlines)
 
 ```
-```{r}
-library(stringr)
 
-filter_headlines <- function(terms, years, months) {
-  
-  filtered_headlines_list <- list()
-  
-  for (term in terms) {
-
-    filtered_headlines_year_list <- list()
-    
-
-    for (year in years) {
-
-      for (month in months) {
-
-        archive <- ny_archive(year, month)
-        
-        main_headlines <- lapply(archive, function(article) article$headline$main)
-        filtered_headlines <- main_headlines[str_detect(main_headlines, term)]
-        
-        if (length(filtered_headlines) > 0) {
-          filtered_headlines_year_list <- c(filtered_headlines_year_list, filtered_headlines)
-        }
-      }
-    }
-    
-    # Convert the list of filtered headlines for each year into a data frame
-    if (length(filtered_headlines_year_list) > 0) {
-      filtered_headlines_df <- data.frame(Main_Headline = unlist(filtered_headlines_year_list))
-      
-      assign(paste0("filtered_headlines_", term), filtered_headlines_df, envir = .GlobalEnv)
-      
-      # Save the filtered headlines data frame for the current term
-      filtered_headlines_list[[term]] <- filtered_headlines_df
-    }
-  }
-  
-  # Return the list of filtered headlines for each term
-  return(filtered_headlines_list)
-}
-
-# Example usage:
-terms <- c("Tesla")  # Add different terms to filter by
-years <- 2021  # Add multiple years
-months <- 1:4  # Add multiple months
-
-# Call the function to filter headlines for each term and save them into separate data frames
-filtered_headlines <- filter_headlines(terms, years, months)
-
-# Access filtered headlines for a specific term
-filtered_headlines[["Tesla"]]
- 
-
-```
 
 
 ## Geolocation
