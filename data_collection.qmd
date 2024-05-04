@@ -133,6 +133,38 @@ filtered_headlines[["Tesla"]]
  
 
 ```
+###Cash flow data
+```{r}
+data_wide <- `googl_cash-flow-statement` %>%
+  pivot_wider(names_from = Year, values_from = c("2023", "2022", "2021", "2020", "2019", "2018", "2017", "2016", "2015", "2014"))
+
+# Print the pivoted data
+print(data_wide)
+
+```
+
+```{r}
+data_long <- `googl_cash-flow-statement` %>%
+  pivot_longer(cols = -Year, names_to = "Variable", values_to = "Value")
+
+# Pivot the data wider to spread the years into separate columns
+data_wide <- data_long %>%
+  pivot_wider(names_from = Year, values_from = Value)
+
+# Print the pivoted data
+print(data_wide)
+```
+
+
+
+```{r}
+cash_fl_google <-`googl_cash-flow-statement`|>
+  pivot_longer(cols= c("Net Income","Depreciation", "Share_Compensation", "Other_Activities"),
+               names_to = "Category", 
+               values_to = "Amount")
+
+cash_fl_google
+```
 
 
 ## Geolocation
