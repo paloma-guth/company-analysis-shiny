@@ -18,10 +18,10 @@ library(dplyr)
 library(readr)
 library(janitor)
 
-afinn<-get_sentiments("afinn")
+#afinn<-get_sentiments("afinn")
 
 robotstxt::paths_allowed("https://stockanalysis.com/stocks/nflx/financials/balance-sheet/")
-#cheked - WSJ allow data scrapping
+#checked - WSJ allow data scrapping
 ```
 
 #### Data collection and cleaning
@@ -37,15 +37,19 @@ cleaning_data <- function(data) {
   data_wide[data_wide == "-"] <- NA
   
   data_wide <- data_wide |>
-    select(where(~ !any(is.na(.))))|>
-    filter(!rowSums(across(everything(), ~. == "Upgrade")))
-  #would the janitor package do it in a more efficient way?
+    select(where(~ !any(is.na(.))))|>#would the janitor package do it in a more efficient way?
+    filter(!rowSums(across(everything(), ~. == "Upgrade")))|>
+    clean_names(case='snake')
+  
+  colnames(data_wide) <- ifelse(str_detect(colnames(data_wide), "%"), paste0(colnames(data_wide), "_percent"), colnames(data_wide))
+  
+  #data_wide<-data_wide|>
+  #  mutate_if(~ any(str_detect(., "%")), ~str_replace_all(., "%", ""))
   
   #parse number - everything is still as char
   
   #percentage? - change variable name or *100
   
-  #tidy variable names - janitor package
   
   return(data_wide)
 }
@@ -67,7 +71,7 @@ scrape_all_data <- function(terms, types, tidy_types) {
     for (type in types) {
       standard_url <- str_c("https://stockanalysis.com/stocks/",term,"/financials/",type,"/")
       dataset <- scrape_data(standard_url)
-      cleaning_data<-pivot_data(dataset)
+      clean_data<-cleaning_data(dataset)
       assign(paste0(term, "_", ifelse(type==types[1], tidy_types[1], tidy_types[2])), clean_data, envir = .GlobalEnv)
       #save to csv - in case
       #dataset_name <- paste0(term, "_", type, ".csv")  # Generate unique filename
@@ -79,16 +83,6 @@ scrape_all_data <- function(terms, types, tidy_types) {
 scrape_all_data(terms, types, tidy_type)
 
 ```
-
-
-###Cash flow data
-```{r}
-
-
-```
-
-
-
 
 
 ## Sentimental analysis data - NYT api
