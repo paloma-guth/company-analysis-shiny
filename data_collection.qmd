@@ -63,10 +63,6 @@ library(nytimes)
 
 nytimes_key("csHR8NIDuVovzJ9A15iyiEmR7aVAGBK9")
 
-archive<-ny_archive(year, month)
-year<-2023
-month<-1:4
-
 archive <- ny_archive(2023, 2)
 
 main_headlines <- list()
@@ -76,13 +72,15 @@ for(i in archive){
   main_headlines <- c(main_headlines, main_headline)
 }
 
-tesla_headlines<-main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
-tesla_headlines_df <- data.frame(tesla_headlines)
+main_headlines_df <- data.frame(Main_Headline = unlist(main_headlines))
+str_detect(main_headlines_df$Main_Headline, "Officers")
+main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
+
 
 ```
+```{r}
+library(stringr)
 
-<<<<<<< HEAD
-=======
 filter_headlines <- function(terms, years, months) {
   
   filtered_headlines_list <- list()
@@ -167,7 +165,6 @@ cash_fl_google <-`googl_cash-flow-statement`|>
 
 cash_fl_google
 ```
->>>>>>> 4ac75c0b1a1a19996588ef11365afcfead567b68
 
 
 ## Geolocation
