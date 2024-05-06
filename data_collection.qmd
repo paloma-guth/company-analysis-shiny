@@ -14,6 +14,7 @@ library(httr)
 library(jsonlite)
 library(tidytext)
 library(stringr)
+library(dplyr)
 
 afinn<-get_sentiments("afinn")
 
@@ -22,6 +23,7 @@ robotstxt::paths_allowed("https://stockanalysis.com/stocks/nflx/financials/balan
 ```
 
 #### Data collection
+
 
 ```{r}
 library(rvest)
@@ -37,11 +39,12 @@ terms <- c("nflx", "dis", "wbd", "tsla", "tm", "hmc", "googl", "meta", "bidu", "
 types <- c("balance-sheet", "cash-flow-statement")
 
 scrape_all_data <- function(terms, types) {
+  
   for (term in terms) {
     for (type in types) {
       standard_url <- str_c("https://stockanalysis.com/stocks/",term,"/financials/",type,"/")
       dataset <- scrape_data(standard_url)
-      assign(paste0(term, "_", type), dataset, envir = .GlobalEnv)
+      assign(paste0(term, "-", type), dataset, envir = .GlobalEnv)
       #save to csv - in case
       #dataset_name <- paste0(term, "_", type, ".csv")  # Generate unique filename
       #write.csv(dataset, file = dataset_name, row.names = FALSE)
@@ -51,7 +54,37 @@ scrape_all_data <- function(terms, types) {
 
 scrape_all_data(terms, types)
 
-#all tables would need to be pivot wider - all messed up now
+```
+
+
+###Cash flow data
+```{r}
+pivot_data <- function(data) {
+  data_long <- data |>
+    pivot_longer(cols = -Year, names_to = "Variable", values_to = "Value")
+  
+  data_wide <- data_long |>
+    pivot_wider(names_from = Year, values_from = Value)
+  
+  data_wide[data_wide == "-"] <- NA
+  
+  data_wide <- data_wide |>
+    select(where(~ !any(is.na(.))))|>
+    filter(!rowSums(across(everything(), ~. == "Upgrade")))
+  
+
+  tidy_df_name <- paste0(deparse(substitute(data)), "-tidy")
+  
+  assign(tidy_df_name, data_wide, envir = .GlobalEnv)
+}
+
+all_data<-c(`nflx-balance-sheet`, `dis-balance-sheet`, `wbd-balance-sheet`, `tsla-balance-sheet`, `tm-balance-sheet`, `hmc-balance-sheet`, `googl-balance-sheet`, `meta-balance-sheet`, `bidu-balance-sheet`, `adm-balance-sheet`, `agro-balance-sheet`, `fdp-balance-sheet`, `cvs-balance-sheet`, `ci-balance-sheet`, `elv-balance-sheet`, `nflx-cash-flow-statement`, `dis-cash-flow-statement`, `wbd-cash-flow-statement`, `tsla-cash-flow-statement`, `tm-cash-flow-statement`, `hmc-cash-flow-statement`, `googl-cash-flow-statement`, `meta-cash-flow-statement`, `bidu-cash-flow-statement`, `adm-cash-flow-statement`, `agro-cash-flow-statement`, `fdp-cash-flow-statement`, `cvs-cash-flow-statement`, `ci-cash-flow-statement`, `elv-cash-flow-statement`)
+
+for(i in all_data){#not working
+  pivot_data(i)
+}
+
+pivot_data(`nflx-balance-sheet`)#but this is working / char class issue
 
 ```
 
@@ -76,29 +109,6 @@ main_headlines_df <- data.frame(Main_Headline = unlist(main_headlines))
 str_detect(main_headlines_df$Main_Headline, "Officers")
 main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
 ```
-
-###Cash flow data
-```{r}
-data_wide <- `googl_cash-flow-statement` %>%
-  pivot_wider(names_from = Year, values_from = c("2023", "2022", "2021", "2020", "2019", "2018", "2017", "2016", "2015", "2014"))
-
-# Print the pivoted data
-print(data_wide)
-
-```
-
-```{r}
-data_long <- `googl_cash-flow-statement` %>%
-  pivot_longer(cols = -Year, names_to = "Variable", values_to = "Value")
-
-# Pivot the data wider to spread the years into separate columns
-data_wide <- data_long %>%
-  pivot_wider(names_from = Year, values_from = Value)
-
-# Print the pivoted data
-print(data_wide)
-```
-
 
 
 ```{r}
