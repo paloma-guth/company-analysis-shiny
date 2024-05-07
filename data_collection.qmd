@@ -44,6 +44,7 @@ cleaning_data <- function(data) {
   
   colnames(data_wide) <- ifelse(str_detect(data_wide, "%$"), paste(colnames(data_wide),"percent", sep="_"), colnames(data_wide))
   
+  
   data_wide<-data_wide|>
     mutate(across(everything(), parse_number()))
   
