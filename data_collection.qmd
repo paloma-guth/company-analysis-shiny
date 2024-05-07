@@ -39,22 +39,9 @@ cleaning_data <- function(data) {
   data_wide <- data_wide |>
     select(where(~ !any(is.na(.))))|>
     filter(!rowSums(across(everything(), ~. == "Upgrade")))|>
-    clean_names(case='snake')
-    
-  
-  colnames(data_wide) <- ifelse(str_detect(data_wide, "%$"), paste(colnames(data_wide),"percent", sep="_"), colnames(data_wide))
-  
-  
-  data_wide<-data_wide|>
-    mutate(across(everything(), parse_number()))
-  
-  #data_wide<-data_wide|>
-  #  mutate_if(~ any(str_detect(., "%")), ~str_replace_all(., "%", ""))
-  
-  #parse number - everything is still as char
-  
-  #percentage? - change variable name or *100
-  
+    clean_names(case='snake')|>
+    rename_with(~paste0(.x, "_percent"), where(~any(str_detect(., "%"))))|> 
+    mutate(across(everything(), parse_number))
   
   return(data_wide)
 }
