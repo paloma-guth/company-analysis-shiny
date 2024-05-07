@@ -34,14 +34,18 @@ cleaning_data <- function(data) {
   data_wide <- data_long |>
     pivot_wider(names_from = Year, values_from = Value)
   
-  data_wide[data_wide == "-"] <- NA
+  data_wide[data_wide == "-"] <- NA 
   
   data_wide <- data_wide |>
-    select(where(~ !any(is.na(.))))|>#would the janitor package do it in a more efficient way?
+    select(where(~ !any(is.na(.))))|>
     filter(!rowSums(across(everything(), ~. == "Upgrade")))|>
     clean_names(case='snake')
+    
   
-  colnames(data_wide) <- ifelse(str_detect(colnames(data_wide), "%"), paste0(colnames(data_wide), "_percent"), colnames(data_wide))
+  colnames(data_wide) <- ifelse(str_detect(data_wide, "%$"), paste(colnames(data_wide),"percent", sep="_"), colnames(data_wide))
+  
+  data_wide<-data_wide|>
+    mutate(across(everything(), parse_number()))
   
   #data_wide<-data_wide|>
   #  mutate_if(~ any(str_detect(., "%")), ~str_replace_all(., "%", ""))
@@ -74,7 +78,7 @@ scrape_all_data <- function(terms, types, tidy_types) {
       clean_data<-cleaning_data(dataset)
       assign(paste0(term, "_", ifelse(type==types[1], tidy_types[1], tidy_types[2])), clean_data, envir = .GlobalEnv)
       #save to csv - in case
-      #dataset_name <- paste0(term, "_", type, ".csv")  # Generate unique filename
+      #dataset_name <- paste0(term, "_", type, ".csv") 
       #write.csv(dataset, file = dataset_name, row.names = FALSE)
     }
   }
@@ -104,16 +108,6 @@ for(i in archive){
 main_headlines_df <- data.frame(Main_Headline = unlist(main_headlines))
 str_detect(main_headlines_df$Main_Headline, "Officers")
 main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
-```
-
-
-```{r}
-cash_fl_google <-`googl_cash-flow-statement`|>
-  pivot_longer(cols= c("Net Income","Depreciation", "Share_Compensation", "Other_Activities"),
-               names_to = "Category", 
-               values_to = "Amount")
-
-cash_fl_google
 ```
 
 
