@@ -77,6 +77,14 @@ scrape_all_data(terms, types, tidy_type)
 ```
 
 
+#### New data bases
+
+```{r}
+test<-bind_cols(wbd_cash_flow$net_cash_flow, tsla_cash_flow$net_cash_flow, tm_cash_flow$net_cash_flow)
+```
+
+
+
 ## Sentimental analysis data - NYT api
 
 ```{r}
