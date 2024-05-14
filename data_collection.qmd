@@ -18,7 +18,7 @@ library(dplyr)
 library(readr)
 library(janitor)
 
-#afinn<-get_sentiments("afinn")
+afinn<-get_sentiments("afinn")
 
 robotstxt::paths_allowed("https://stockanalysis.com/stocks/nflx/financials/balance-sheet/")
 #checked - WSJ allow data scrapping
@@ -54,9 +54,9 @@ scrape_data <- function(url) {
   return(dataset)
 }
 
-terms <- c("nflx", "dis", "wbd", "tsla", "tm", "hmc", "googl", "meta", "bidu", "adm", "agro", "fdp", "cvs", "ci", "elv")
-types <- c("balance-sheet", "cash-flow-statement")
-tidy_type<-c("balance_sheet", "cash_flow") #couldn't find another way to have the dataframe name in a tidy format
+terms <- c("nflx", "dis", "wbd", "tsla", "tm", "hmc", "googl", "meta", "bidu", "adm", "agro", "fdp", "cvs", "unh", "elv")
+types <- c("balance-sheet", "")
+tidy_type<-c("balance_sheet", "income_statement") #couldn't find another way to have the dataframe name in a tidy format
 
 scrape_all_data <- function(terms, types, tidy_types) {
   
@@ -66,80 +66,167 @@ scrape_all_data <- function(terms, types, tidy_types) {
       dataset <- scrape_data(standard_url)
       clean_data<-cleaning_data(dataset)
       assign(paste0(term, "_", ifelse(type==types[1], tidy_types[1], tidy_types[2])), clean_data, envir = .GlobalEnv)
-      #save to csv - in case
-      #dataset_name <- paste0(term, "_", type, ".csv") 
-      #write.csv(dataset, file = dataset_name, row.names = FALSE)
     }
   }
 }
 
 scrape_all_data(terms, types, tidy_type)
 
+#everything is in millions USD
+#Fiscal year is January - December
 ```
 
 
 #### New data bases
 
 ```{r}
-test<-bind_cols(wbd_cash_flow$net_cash_flow, tsla_cash_flow$net_cash_flow, tm_cash_flow$net_cash_flow, nflx_cash_flow$net_cash_flow, meta_cash_flow$net_cash_flow, hmc_cash_flow$net_cash_flow, googl_cash_flow$net_cash_flow, fdp_cash_flow$net_cash_flow, elv_cash_flow$net_cash_flow, dis_cash_flow$net_cash_flow, cvs_cash_flow$net_cash_flow, ci_cash_flow$net_cash_flow, bidu_cash_flow$net_cash_flow, agro_cash_flow$net_cash_flow, adm_cash_flow$net_cash_flow)
-
-original_names <- rep("net_cash_flow", 15)
-
-# Add dataset names as prefixes to the variable names
-colnames(test) <- paste0(c("wbd", "tsla", "tm", "nflx", "meta", "hmc", "googl", "fdp", "elv", "dis", "cvs", "ci", "bidu", "agro", "adm"), "_", original_names)
-
-```
-
-```{r}
-#working on making this a function so we can have a dataframe for each variable we want a graph about
-
-#fill up the NAs? - mean from the other years we have?
 
 datasets <- list(
-  wbd_cash_flow, tsla_cash_flow, tm_cash_flow, nflx_cash_flow, meta_cash_flow,
-  hmc_cash_flow, googl_cash_flow, fdp_cash_flow, elv_cash_flow, dis_cash_flow,
-  cvs_cash_flow, ci_cash_flow, bidu_cash_flow, agro_cash_flow, adm_cash_flow
+  wbd_balance_sheet, tsla_balance_sheet, tm_balance_sheet, nflx_balance_sheet, 
+  meta_balance_sheet, hmc_balance_sheet, googl_balance_sheet, fdp_balance_sheet, 
+  elv_balance_sheet, dis_balance_sheet, cvs_balance_sheet, unh_balance_sheet, 
+  bidu_balance_sheet, agro_balance_sheet, adm_balance_sheet
 )
 
-net_cash_flows <- lapply(datasets, function(x) select(x, net_cash_flow, year))
+datasets2 <- list(
+  wbd_income_statement, tsla_income_statement, tm_income_statement, nflx_income_statement, 
+  meta_income_statement, hmc_income_statement, googl_income_statement, fdp_income_statement, 
+  elv_income_statement, dis_income_statement, cvs_income_statement, unh_income_statement, 
+  bidu_income_statement, agro_income_statement, adm_income_statement
+)
 
-year_ranges <- lapply(net_cash_flows, function(x) range(x$year))
+extract_columns <- function(x, y) {
+  lapply(seq_along(x), function(i) {
+    as_tibble(list(
+      year = x[[i]]$year,
+      total_assets = x[[i]]$total_assets,
+      net_income = y[[i]]$net_income
+    ))
+  })
+}
+
+assets_data1 <- lapply(datasets, function(x) select(x, total_assets, total_liabilities, year))
+assets_data2 <- extract_columns(datasets, datasets2)
+#I needed to search this up
+assets_data3 <- lapply(datasets, function(x) select(x, total_current_assets, total_current_liabilities, year))
+revenue<-lapply(datasets2, function(x) select(x, revenue, year))
+
+
+make_data<-function(assets_data, choice){
+year_ranges <- lapply(assets_data, function(x) range(x$year))
 overall_range <- range(do.call(c, year_ranges))
 all_years <- seq(overall_range[1], overall_range[2])
 
 
-net_cash_flows_filled <- lapply(net_cash_flows, function(df) {
+assets_data_filled <- lapply(assets_data, function(df) {
   df %>%
     complete(year = all_years) %>%
     arrange(year)
 })
 
-merged_case_flow <- net_cash_flows_filled[[1]]
+#fix nas based on last 2 values
+merged_assets <- assets_data_filled[[1]]
 
-for(i in 2:length(net_cash_flows_filled)) {
-  merged_case_flow <- bind_cols(merged_case_flow, net_cash_flows_filled[[i]][2])
+if(choice==4){
+  for(i in 2:length(assets_data_filled)) {
+    merged_assets <- bind_cols(merged_assets, assets_data_filled[[i]][2])
+  }
+}else{
+for(i in 2:length(assets_data_filled)) {
+  merged_assets <- bind_cols(merged_assets, assets_data_filled[[i]][2:3])
+}}
+
+#impute data in NAs
+fill_missing_with_mean <- function(x) {
+  na_index <- which(is.na(x))
+  for (i in na_index) {
+    start_index <- max(1, i - 2)
+    end_index <- min(length(x), i + 2)
+    x[i] <- mean(x[start_index:end_index], na.rm = TRUE)
+  }
+  return(x)
 }
 
-original_names <- rep("net_cash_flow", length(datasets))
+merged_assets_filled <- merged_assets %>%
+  mutate(across(everything(), fill_missing_with_mean))
 
-colnames(merged_case_flow)[-1] <- paste0(c("wbd", "tsla", "tm", "nflx", "meta", "hmc", "googl", "fdp", "elv", "dis", "cvs", "ci", "bidu", "agro", "adm"), "_", original_names)
+#new data set for the ratios
+new_df <- data.frame(year = merged_assets_filled$year)
 
-write.csv(merged_case_flow, file = "merged_case_flow.csv", row.names = FALSE)
+if(choice==4){
+  for(i in seq(2, ncol(merged_assets_filled))){
+    col1<-names(merged_assets_filled)[i]
+    
+    ratio_name <- paste0("revenue_", col1)
+    
+    new_df[ratio_name] <- merged_assets_filled[[col1]]
+  }
+}else{
+for (i in seq(2, ncol(merged_assets_filled), by = 2)) {
+  col1 <- names(merged_assets_filled)[i]
+  col2 <- names(merged_assets_filled)[i + 1]
+  
+  ratio_name <- paste0("ratio_", col1, "_to_", col2)
+  if(choice==1 |choice ==3){
+    new_df[ratio_name] <- merged_assets_filled[[col1]] / merged_assets_filled[[col2]]
+  }else if(choice==2){
+    new_df[ratio_name] <- merged_assets_filled[[col2]] / mean(merged_assets_filled[[col1]])
+  }
+}}
 
+colnames(new_df)[-1] <- paste0(c("warner_bros_discovery", "tesla", "toyota_motor", "netflix", "meta", "honda_motor", "google", "fresh_del_monte", "elevance_health", "walt_disney_cia", "cvs", "united_health_group", "baidu", "adecoagro", "archer_daniels_midland"))
+#Change names later
 
-#test for a graph with the data - not looking good
-#normalize in any form?
-graph_data <- merged_case_flow %>%
-  pivot_longer(cols = -year, names_to = "company", values_to = "net_cash_flow")
+if(choice==1){
+  write.csv(new_df, file = "debt_ratio.csv", row.names = FALSE) #solvency ratio - debt ratio
+}else if(choice==2){
+  write.csv(new_df, file = "return_on_assets.csv", row.names = FALSE) #profitability ratio - return on assets
+}else if(choice==3){
+  write.csv(new_df, file = "current_ratio.csv", row.names = FALSE) #liquidity ratio - current ratio
+}else if(choice==4){
+  write.csv(new_df, file="revenue.csv", row.names = FALSE)
+}
+}
 
-# Plot
-ggplot(graph_data, aes(x = year, y = net_cash_flow, color = company)) +
-  geom_line() +
-  labs(x = "Year", y = "Net Cash Flow", color = "Company") +
-  theme_minimal()
-
+make_data(assets_data1, 1)
+make_data(assets_data2, 2)
+make_data(assets_data3, 3)
+make_data(revenue, 4)
 ```
 
+```{r}
+company_info <- data.frame(
+  company = c("warner_bros_discovery", "tesla", "toyota_motor", "netflix", "meta", 
+              "honda_motor", "google", "fresh_del_monte", "elevance_health", 
+              "walt_disney_cia", "cvs", "united_health_group", "baidu", 
+              "adecoagro", "archer_daniels_midland"),
+  sector = c("entertainment", "auto_manufactures", "auto_manufactures", 
+             "entertainment", "internet_content", "auto_manufactures", 
+             "internet_content", "farm_products", "health_plan", 
+             "entertainment", "health_plan", "health_plan", 
+             "internet_content", "farm_products", "farm_products")
+)
+
+debt_ratio <- read_csv("debt_ratio.csv")
+current_ratio <- read_csv("current_ratio.csv")
+return_on_assets <- read_csv("return_on_assets.csv")
+
+debt_ratio_tidy <- debt_ratio |>
+  pivot_longer(cols = -year, names_to = "company", values_to = "debt_ratio")|>
+  left_join(company_info, by="company")
+
+current_ratio_tidy <- current_ratio |>
+  pivot_longer(cols = -year, names_to = "company", values_to = "debt_ratio")|>
+  left_join(company_info, by="company")
+
+return_on_assets_tidy <- return_on_assets |>
+  pivot_longer(cols = -year, names_to = "company", values_to = "debt_ratio")|>
+  left_join(company_info, by="company")
+
+write.csv(debt_ratio_tidy, file = "debt_ratio_tidy.csv", row.names = FALSE)
+write.csv(current_ratio_tidy, file = "current_ratio_tidy.csv", row.names = FALSE)
+write.csv(return_on_assets_tidy, file = "return_on_assets_tidy.csv", row.names = FALSE)
+```
 
 
 
@@ -150,24 +237,310 @@ library(nytimes)
 
 nytimes_key("csHR8NIDuVovzJ9A15iyiEmR7aVAGBK9")
 
-archive <- ny_archive(2023, 2)
+archive <- ny_archive(2014, 1)
 
 main_headlines <- list()
+dates <- list()
 
 for(i in archive){
   main_headline <- i$headline$main
+  pub_date <- i$pub_date
   main_headlines <- c(main_headlines, main_headline)
+  dates <- c(dates, pub_date)
 }
 
-main_headlines_df <- data.frame(Main_Headline = unlist(main_headlines))
-str_detect(main_headlines_df$Main_Headline, "Officers")
-main_headlines_df[str_detect(main_headlines_df$Main_Headline, "Tesla"), ]
+tesla_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+warnerB_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+toyota_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+netflix_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+meta_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+honda_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+google_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+freshDelMonte_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+elevHealth_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+disney_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+unitedHealth_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+cvs_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+baidu_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+adecoagro_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+archerDaniels_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
+                                Date = unlist(dates))
+
+tesla_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Tesla"))
+warnerB_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Warner Bros"))
+toyota_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Toyota"))
+netflix_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Netflix"))
+meta_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Meta"))
+honda_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Honda"))
+google_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Google"))
+freshDelMonte_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Fresh del monte"))
+elevHealth_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "elevenace health"))
+disney_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "walt disney"))
+unitedHealth_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "United health group"))
+cvs_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "CVS"))
+baidu_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "baidu"))
+adecoagro_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "adecoagro"))
+archerDaniels_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "archer daniels"))
+
+tesla_headlines_all <- bind_rows(tesla_headlines_all, tesla_headlines)
+warnerB_headlines_all <- bind_rows(warnerB_headlines_all, warnerB_headlines)
+toyota_headlines_all <- bind_rows(toyota_headlines_all, toyota_headlines)
+netflix_headlines_all <- bind_rows(netflix_headlines_all, netflix_headlines)
+meta_headlines_all <- bind_rows(meta_headlines_all, meta_headlines)
+honda_headlines_all <- bind_rows(honda_headlines_all, honda_headlines)
+google_headlines_all <- bind_rows(google_headlines_all, google_headlines)
+freshDelMonte_headlines_all <- bind_rows(freshDelMonte_headlines_all, freshDelMonte_headlines)
+elevHealth_headlines_all <- bind_rows(elevHealth_headlines_all, elevHealth_headlines)
+disney_headlines_all <- bind_rows(disney_headlines_all, disney_headlines)
+unitedHealth_headlines_all <- bind_rows(unitedHealth_headlines_all, unitedHealth_headlines)
+cvs_headlines_all <- bind_rows(cvs_headlines_all, cvs_headlines)
+baidu_headlines_all <- bind_rows(baidu_headlines_all, baidu_headlines)
+adecoagro_headlines_all <- bind_rows(adecoagro_headlines_all, adecoagro_headlines)
+archerDaniels_headlines_all <- bind_rows(archerDaniels_headlines_all, archerDaniels_headlines)
+
+```
+
+```{r}
+library(nytimes)
+library(dplyr)
+library(stringr)
+
+nytimes_key("csHR8NIDuVovzJ9A15iyiEmR7aVAGBK9")
+
+years <- 2014:2023
+months <- 1:12
+
+tesla_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+warnerB_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+toyota_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+netflix_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+meta_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+honda_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+google_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+freshDelMonte_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+elevHealth_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+disney_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+unitedHealth_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+cvs_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+baidu_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+adecoagro_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+archerDaniels_headlines_all <- data.frame(Main_Headline = character(), Date = character())
+
+for (year in years) {
+  for (month in months) {
+    archive <- ny_archive(year, month)
+    
+    for (i in archive) {
+      main_headline <- i$headline$main
+      pub_date <- i$pub_date
+      
+      # Filter headlines for each company
+      if (str_detect(main_headline, "Tesla")) {
+        tesla_headlines_all <- bind_rows(tesla_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "Warner Bros")) {
+        warnerB_headlines_all <- bind_rows(warnerB_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "Toyota")) {
+        toyota_headlines_all <- bind_rows(toyota_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      }else if (str_detect(main_headline, "Netflix")) {
+        netflix_headlines_all <- bind_rows(netflix_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "\\bmeta\\b|facebook")) {
+        meta_headlines_all <- bind_rows(meta_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "Honda")) {
+        honda_headlines_all <- bind_rows(honda_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "google")) {
+        google_headlines_all <- bind_rows(google_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "fresh del monte")) {
+        freshDelMonte_headlines_all <- bind_rows(freshDelMonte_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "elevance health")) {
+        elevHealth_headlines_all <- bind_rows(elevHealth_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "Disney")) {
+        disney_headlines_all <- bind_rows(disney_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "united health")) {
+        unitedHealth_headlines_all <- bind_rows(unitedHealth_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "CVS")) {
+        cvs_headlines_all <- bind_rows(cvs_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "baidu")) {
+        baidu_headlines_all <- bind_rows(baidu_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "Adecoagro")) {
+        adecoagro_headlines_all <- bind_rows(adecoagro_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      } else if (str_detect(main_headline, "Archer Daniels")) {
+        archerDaniels_headlines_all <- bind_rows(archerDaniels_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
+      }
+    }
+    Sys.sleep(10)
+  }
+}
+
+write.csv(tesla_headlines_all, file = "tesla_headlines.csv", row.names = FALSE)
+write.csv(adecoagro_headlines_all, file = "adecoagro_headlines.csv", row.names = FALSE)
+write.csv(archerDaniels_headlines_all, file = "archerDaniels_headlines.csv", row.names = FALSE)
+write.csv(baidu_headlines_all, file = "baidu_headlines.csv", row.names = FALSE)
+write.csv(cvs_headlines_all, file = "cvs_headlines.csv", row.names = FALSE)
+write.csv(disney_headlines_all, file = "disney_headlines.csv", row.names = FALSE)
+write.csv(elevHealth_headlines_all, file = "elevHealth_headlines.csv", row.names = FALSE)
+write.csv(freshDelMonte_headlines_all, file = "freshDelMonte_headlines.csv", row.names = FALSE)
+write.csv(google_headlines_all, file = "google_headlines.csv", row.names = FALSE)
+write.csv(honda_headlines_all, file = "honda_headlines.csv", row.names = FALSE)
+write.csv(meta_headlines_all, file = "meta_headlines.csv", row.names = FALSE)
+write.csv(toyota_headlines_all, file = "toyota_headlines.csv", row.names = FALSE)
+write.csv(unitedHealth_headlines_all, file = "unitedHealth_headlines.csv", row.names = FALSE)
+write.csv(warnerB_headlines_all, file = "warnerB_headlines.csv", row.names = FALSE)
+
+```
+
+```{r}
+cvs_headlines <- read_csv("cvs_headlines.csv")
+adecoagro_headlines <- read_csv("adecoagro_headlines.csv")
+archerDaniels_headlines <- read_csv("archerDaniels_headlines.csv")
+baidu_headlines <- read_csv("baidu_headlines.csv")
+disney_headlines <- read_csv("disney_headlines.csv")
+elevHealth_headlines <- read_csv("elevHealth_headlines.csv")
+freshDelMonte_headlines <- read_csv("freshDelMonte_headlines.csv")
+google_headlines <- read_csv("google_headlines.csv")
+honda_headlines <- read_csv("honda_headlines.csv")
+meta_headlines <- read_csv("meta_headlines.csv")
+tesla_headlines <- read_csv("tesla_headlines.csv")
+toyota_headlines <- read_csv("toyota_headlines.csv")
+unitedHealth_headlines <- read_csv("unitedHealth_headlines.csv")
+warnerB_headlines <- read_csv("warnerB_headlines.csv")
+
+datasets_h <- list(
+  tesla_headlines,
+  adecoagro_headlines,
+  archerDaniels_headlines,
+  baidu_headlines,
+  cvs_headlines,
+  disney_headlines,
+  elevHealth_headlines,
+  freshDelMonte_headlines,
+  google_headlines,
+  honda_headlines,
+  meta_headlines,
+  toyota_headlines,
+  unitedHealth_headlines,
+  warnerB_headlines
+)
+
+print(datasets_h)
+
+headlines_names<-c("tesla", "adecoagro", "archerDaniels","baidu","cvs","disney",
+                   "elevHealth","freshDelMonte","google","honda","meta","toyota",
+                   "unitedHealth","warnerB")
+
+for (i in seq_along(datasets_h)) {
+  print(colnames(datasets_h[[i]])) 
+  datasets_h[[i]] <- datasets_h[[i]] |>
+    mutate(
+      year = str_extract(Date, "\\d{4}"),
+      month = str_extract(Date, "-\\d{2}"),
+      month = str_remove(month, "-")
+    ) |>
+    select(-Date)
+  
+  tidy_headlines <- datasets_h[[i]] |>
+    mutate(line_id = row_number()) |>
+    unnest_tokens(word, Main_Headline)
+  
+  tidy_headlines <- tidy_headlines |>
+    anti_join(stop_words) |>
+    left_join(afinn)|>
+    filter(!is.na(value))|>
+    rename(!!headlines_names[i] := word)
+  
+  write.csv(tidy_headlines, file = paste0(headlines_names[i], "_headlines_token.csv"), row.names = FALSE)
+}
+
+disney_headlines_token <- read_csv("disney_headlines_token.csv")
+
+test<-disney_headlines_token|>
+  select(!c(month,line_id))
+  pivot_longer(cols = -year, names_to = "company", values_to = "value")
+
+#all headlines - one dataset
+
+```
+
+
+
+
+```{r}
+dtm_freq <- as.matrix(dtm)
+
+# Apply PCA
+pca_result <- prcomp(dtm_freq, scale. = TRUE)
+
+# Extract the PCA scores
+pca_scores <- as.data.frame(pca_result$x)
+
+# Add sentiment scores to the PCA scores data frame
+pca_scores$sentiment <- sentiment_scores
+
+# Optionally, apply clustering
+# clustering <- kmeans(pca_scores, centers = k)
+
+# Plot the PCA scores
+ggplot(pca_scores, aes(x = PC1, y = PC2, color = sentiment)) +
+  geom_point() +
+  labs(x = "PC1", y = "PC2", color = "Sentiment") +
+  theme_minimal()
 ```
 
 
 ## Geolocation
 
 ```{r}
-#get location of headquarters for each company
-#leaflet graph - gps location
+comp_hq <- data.frame(
+  company = c("warner_bros_discovery", "tesla", "toyota_motor", "netflix", "meta", 
+              "honda_motor", "google", "fresh_del_monte", "elevance_health", 
+              "walt_disney_cia", "cvs", "united_health_group", "baidu", 
+              "adecoagro", "archer_daniels_midland"),
+  latitude = c(34.1501299, 30.2226207, 35.1404372, 34.0976885, 37.470542, 35.672381, 37.4197828, 37.7968862, 33.774954, 34.1562056, 41.9910183, 45.064081, 40.049806, 49.6063196, 44.4389711),
+  longitude = c(-118.3747272, -97.6372702, 136.9812229, -118.3347133, -122.1687157, 139.7053888, -123.1312509, -122.3510099, -84.4061868, -118.343643, -71.4794475, -93.4258308, 116.296106, 6.1271596, -96.9985641),
+  address = c("Burbank, California","Austin, Texas","Toyota, Aichi","Los Gatos, California", "Menlo Park, California", "Minato, Tokyo", "Mountain View, California", "Lathrop, California", "Atlanta, Georgia", "Burbank, California", "Woonsocket, Rhode Island", "Plymounth, Minnesota", "Haidian District, Beijing", "Gare, Luxembourg", "Marshall, Minnesota"))
+
+
+revenue <- read_csv("revenue.csv")
+
+revenue_tidy<-revenue|>
+  pivot_longer(cols = -year, names_to = "company", values_to = "revenue")|>
+  filter(year==2023)|>
+  select(!year)
+
+comp_hq_tidy <- comp_hq |>
+  left_join(revenue_tidy, by="company")
+
+write.csv(comp_hq_tidy, file = "companies_hq.csv", row.names = FALSE)
+
+companies_hq <- read_csv("companies_hq.csv")
+
+library(leaflet)
+
+leaflet(companies_hq) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    data = companies_hq,
+    lat = ~latitude,
+    lng = ~longitude,
+    radius = ~sqrt(revenue) / 100,
+    fillColor = "blue",
+    fillOpacity = 0.4,
+    popup = ~paste0("<b>Company:</b> ", company, "<br>",
+                    "<b>Address:</b> ", address, "<br>",
+                    "<b>Revenue:</b> $", format(revenue, big.mark = ","))
+  )
+
 ```
