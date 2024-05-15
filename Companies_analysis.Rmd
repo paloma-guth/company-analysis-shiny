@@ -1,0 +1,231 @@
+---
+title: "Companies analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll 
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(leaflet)
+library(grid)
+library(tidyverse)
+library(shadowtext)
+
+current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
+return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
+debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
+all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
+companies_hq <- read_csv("companies_hq.csv")
+
+get_top_words <- function(data, company, year, n = 5) {
+  data %>%
+    filter(company == company, year == year) %>%
+    count(word, sort = TRUE) %>%
+    top_n(n, n) %>%
+    arrange(desc(n))
+}
+```
+
+Introduction
+==========================
+
+Explain why we choose this analysis
+
+```{r}
+leaflet(companies_hq) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    data = companies_hq,
+    lat = ~latitude,
+    lng = ~longitude,
+    radius = ~sqrt(revenue) / 100, #resize
+    fillColor = "blue",
+    fillOpacity = 0.4,
+    popup = ~paste0("<b>Company:</b> ", company, "<br>",
+                    "<b>Address:</b> ", address, "<br>",
+                    "<b>Revenue:</b> $", format(revenue, big.mark = ","))
+  )
+```
+
+
+Economical analysis
+==========================
+dhjdhagdhasgdha
+
+Row {.tabset .tabset-fade}
+-------------------------
+### Current Ratio
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector", label = "Select Sector:", choices = c("All", unique(current_ratio_tidy$sector))),
+  uiOutput("company_select")
+)
+
+renderPlot({
+  filtered_data <- current_ratio_tidy
+  
+  if (input$sector != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+```
+
+
+### Debt ratio
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector2", label = "Select Sector:", choices = c("All", unique(debt_ratio_tidy$sector))),
+  uiOutput("company_select2")
+)
+
+renderPlot({
+  filtered_data <- debt_ratio_tidy
+  
+  if (input$sector2 != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector2)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    )+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+```
+
+### Return on Assets
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector3", label = "Select Sector:", choices = c("All", unique(return_on_assets_tidy$sector))),
+  uiOutput("company_select3")
+)
+
+renderPlot({
+  filtered_data <- return_on_assets_tidy
+  
+  if (input$sector3 != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector3)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x=year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    )+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+
+```
+
+News headlines
+==========================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+inputPanel(
+  selectInput("year", label = "Select Year:", choices = unique(all_headlines_tidy$year))
+)
+
+renderPlot({
+  filtered_data <- all_headlines_tidy %>% filter(year == input$year)
+  sentiment_by_company <- filtered_data %>%
+    group_by(company, year) %>%
+    summarise(
+      avg_sentiment = mean(value, na.rm = TRUE),
+      sd_sentiment = sd(value, na.rm = TRUE) / sqrt(n())
+    )
+  
+  ggplot(sentiment_by_company, aes(x = company, y = avg_sentiment, fill = avg_sentiment)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymin = avg_sentiment - sd_sentiment, ymax = avg_sentiment + sd_sentiment), width = 0.2) +
+    scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
+    theme_minimal() +
+    ggtitle("Average Sentiment Trends by Company") +
+    xlab("Company") +
+    ylab("Average Sentiment") +
+    coord_flip()
+})
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+inputPanel(
+  selectInput("year2", label = "Select Year:", choices = unique(all_headlines_tidy$year)),
+  selectInput("company2", label = "Select Company:", choices = unique(all_headlines_tidy$company))
+)
+
+renderPlot({
+  
+  # Filter data based on selected company and year
+  filtered_data <- all_headlines_tidy %>%
+    filter(company == input$company2, year == input$year2)
+  
+  # Count word occurrences
+  top_words <- filtered_data %>%
+    group_by(word) %>%
+    summarise(
+      occurrences = n(),
+      avg_value = mean(value)
+    ) %>%
+    arrange(desc(occurrences)) %>%
+    slice_head(n = 5)
+  
+  ggplot(top_words, aes(x = reorder(word, occurrences), y = avg_value, fill = avg_value)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = word),position = position_stack(vjust= 0.5), colour = "white") + 
+    theme_minimal()  +
+    theme(axis.text.y = element_blank()) +
+    scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
+    labs(title = "Top 5 Words by Company and Year", x = "", y = "") +
+    coord_flip()
+})
+```

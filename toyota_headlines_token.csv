@@ -1,4 +1,4 @@
-"year","month","line_id","toyota","value"
+"year","month","line_id","word","value"
 "2014","03",10,"justice",2
 "2014","03",11,"safety",1
 "2014","03",11,"defects",-3

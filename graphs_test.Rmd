@@ -5,77 +5,200 @@ date: "2024-05-14"
 runtime: shiny
 ---
 
-```{r}
-current_ratio_tidy <- read_csv("current_ratio_tidy.csv")
+```{r echo=FALSE, message=FALSE}
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
 
-current_ratio_tidy$year <- as.factor(current_ratio_tidy$year)
-
-ggplot(current_ratio_tidy, aes(x = year, y = debt_ratio, color = company)) +
-  geom_line(aes(group = company)) +
-  geom_point() +
-  theme_minimal() +
-  labs(
-    x = "Year",
-    y = "Debt Ratio",
-    title = "Debt Ratio by Company Over Time",
-    color = "Company"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r}
-debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
-
-debt_ratio_tidy$year <- as.factor(debt_ratio_tidy$year)
-
-ggplot(debt_ratio_tidy, aes(x = year, y = debt_ratio, color = company)) +
-  geom_line(aes(group = company)) +
-  geom_point() +
-  theme_minimal() +
-  labs(
-    x = "Year",
-    y = "Debt Ratio",
-    title = "Debt Ratio by Company Over Time",
-    color = "Company"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-```{r}
+current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
 return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
-
-return_on_assets_tidy$year <- as.factor(return_on_assets_tidy$year)
-
-ggplot(return_on_assets_tidy, aes(x = year, y = debt_ratio, color = company)) +
-  geom_line(aes(group = company)) +
-  geom_point() +
-  theme_minimal() +
-  labs(
-    x = "Year",
-    y = "Debt Ratio",
-    title = "Debt Ratio by Company Over Time",
-    color = "Company"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
+debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
+all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
 ```
 
+### Current ratio
 
-```{r eruptions, echo=FALSE}
+```{r echo=FALSE}
 inputPanel(
-  selectInput("n_breaks", label = "Number of bins:",
-              choices = c(10, 20, 35, 50), selected = 20),
-  
-  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
-              min = 0.2, max = 2, value = 1, step = 0.2)
+  selectInput("sector", label = "Select Sector:", choices = c("All", unique(current_ratio_tidy$sector))),
+  uiOutput("company_select")
 )
 
 renderPlot({
-  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
-       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  filtered_data <- current_ratio_tidy
   
-  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-  lines(dens, col = "blue")
+  if (input$sector != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector)
+  }
+  
+  if (!is.null(input$company)) {
+    filtered_data <- filtered_data %>%
+      filter(company %in% input$company)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = company)) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 })
+
 ```
+
+### Debt ratio
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector2", label = "Select Sector:", choices = c("All", unique(debt_ratio_tidy$sector))),
+  uiOutput("company_select2")
+)
+
+renderPlot({
+  filtered_data <- debt_ratio_tidy
+  
+  if (input$sector2 != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector2)
+  }
+  
+  if (!is.null(input$company2)) {
+    filtered_data <- filtered_data %>%
+      filter(company %in% input$company2)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = company)) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+
+```
+
+### Return on Assets
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector3", label = "Select Sector:", choices = c("All", unique(return_on_assets_tidy$sector))),
+  uiOutput("company_select3")
+)
+
+renderPlot({
+  filtered_data <- return_on_assets_tidy
+  
+  if (input$sector3 != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector3)
+  }
+  
+  if (!is.null(input$company3)) {
+    filtered_data <- filtered_data %>%
+      filter(company %in% input$company3)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = company)) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+
+```
+
+### Companies headquarters
+
+```{r}
+companies_hq <- read_csv("companies_hq.csv")
+
+library(leaflet)
+
+leaflet(companies_hq) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    data = companies_hq,
+    lat = ~latitude,
+    lng = ~longitude,
+    radius = ~sqrt(revenue) / 100, #resize
+    fillColor = "blue",
+    fillOpacity = 0.4,
+    popup = ~paste0("<b>Company:</b> ", company, "<br>",
+                    "<b>Address:</b> ", address, "<br>",
+                    "<b>Revenue:</b> $", format(revenue, big.mark = ","))
+  )
+```
+
+### Sentimental analysis
+
+```{r}
+sentiment_by_company <- all_headlines_tidy %>%
+  group_by(company, year) %>%
+  summarise(avg_sentiment = mean(value),
+            sd_sentiment = sd(value)/ sqrt(length(value)))#using standard erro
+
+print(sum(is.na(sentiment_by_company$avg_sentiment)))
+
+ggplot(sentiment_by_company, aes(x = company, y = avg_sentiment, fill = avg_sentiment)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = avg_sentiment - sd_sentiment, ymax = avg_sentiment + sd_sentiment), width = 0.2) +
+  scale_fill_gradient(low = "gray", high = "orange") +
+  theme_minimal() +
+  ggtitle("Average Sentiment Trends by Company") +
+  xlab("Company") +
+  ylab("Average Sentiment")+
+  coord_flip()
+
+filtered_data <- all_headlines_tidy %>%
+    filter(company == "disney", year == 2015)
+  
+  # Count word occurrences
+  top_words <- filtered_data %>%
+    group_by(word) %>%
+    summarise(
+      occurrences = n(),
+      avg_value = mean(value)
+    ) %>%
+    arrange(desc(occurrences)) %>%
+    slice_head(n = 5)
+  
+  ggplot(top_words, aes(x = reorder(word, occurrences), y = avg_value, fill = avg_value)) +
+    geom_bar(stat = "identity") +
+    #geom_shadowtext(aes(label = word), colour = "black", hjust = 0, nudge_x = 0.3) +
+    geom_text(aes(label = word),position = position_stack(vjust= 0.5), colour = "white") + 
+    theme_minimal()  +
+    theme(axis.text.y = element_blank()) +
+    scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
+    ggtitle("Top 5 Words by Company and Year") +
+    xlab("Word") +
+    ylab("Average Value") +
+    coord_flip()
+```
+
 
 ## Embedded Application
 

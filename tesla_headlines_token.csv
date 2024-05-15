@@ -1,4 +1,4 @@
-"year","month","line_id","tesla","value"
+"year","month","line_id","word","value"
 "2014","01",2,"safety",1
 "2014","02",3,"loss",-3
 "2014","03",6,"bold",2

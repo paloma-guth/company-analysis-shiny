@@ -458,17 +458,41 @@ for (i in seq_along(datasets_h)) {
   tidy_headlines <- tidy_headlines |>
     anti_join(stop_words) |>
     left_join(afinn)|>
-    filter(!is.na(value))|>
-    rename(!!headlines_names[i] := word)
+    filter(!is.na(value))
   
   write.csv(tidy_headlines, file = paste0(headlines_names[i], "_headlines_token.csv"), row.names = FALSE)
 }
 
+cvs_headlines_token <- read_csv("cvs_headlines_token.csv")
+adecoagro_headlines_token <- read_csv("adecoagro_headlines_token.csv")
+archerDaniels_headlines_token <- read_csv("archerDaniels_headlines_token.csv")
+baidu_headlines_token <- read_csv("baidu_headlines_token.csv")
 disney_headlines_token <- read_csv("disney_headlines_token.csv")
+elevHealth_headlines_token <- read_csv("elevHealth_headlines_token.csv")
+freshDelMonte_headlines_token <- read_csv("freshDelMonte_headlines_token.csv")
+google_headlines_token <- read_csv("google_headlines_token.csv")
+honda_headlines_token <- read_csv("honda_headlines_token.csv")
+meta_headlines_token <- read_csv("meta_headlines_token.csv")
+tesla_headlines_token <- read_csv("tesla_headlines_token.csv")
+toyota_headlines_token <- read_csv("toyota_headlines_token.csv")
+unitedHealth_headlines_token <- read_csv("unitedHealth_headlines_token.csv")
+warnerB_headlines_token <- read_csv("warnerB_headlines_token.csv")
 
-test<-disney_headlines_token|>
-  select(!c(month,line_id))
-  pivot_longer(cols = -year, names_to = "company", values_to = "value")
+data_token<-list (tesla_headlines_token, adecoagro_headlines_token, archerDaniels_headlines_token,
+baidu_headlines_token,cvs_headlines_token, disney_headlines_token, elevHealth_headlines_token,
+freshDelMonte_headlines_token, google_headlines_token, honda_headlines_token, meta_headlines_token, toyota_headlines_token, unitedHealth_headlines_token, warnerB_headlines_token)
+
+headlines_all <- data.frame(year = factor(), word = character(), value = double(), company = character())
+
+for (i in seq_along(data_token)) {
+  test<-data_token[[i]]|>
+    select(!c(month,line_id))|>
+    mutate(company=headlines_names[[i]],
+           year=as.factor(year),
+           value=as.numeric(value))
+  
+  headlines_all <- bind_rows(headlines_all, test)
+}
 
 #all headlines - one dataset
 

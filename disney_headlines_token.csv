@@ -1,4 +1,4 @@
-"year","month","line_id","disney","value"
+"year","month","line_id","word","value"
 "2014","01",2,"troubled",-2
 "2014","01",2,"success",2
 "2014","02",3,"strong",2
