@@ -175,8 +175,7 @@ ggplot(sentiment_by_company, aes(x = company, y = avg_sentiment, fill = avg_sent
 
 filtered_data <- all_headlines_tidy %>%
     filter(company == "disney", year == 2015)
-  
-  # Count word occurrences
+
   top_words <- filtered_data %>%
     group_by(word) %>%
     summarise(
@@ -188,7 +187,7 @@ filtered_data <- all_headlines_tidy %>%
   
   ggplot(top_words, aes(x = reorder(word, occurrences), y = avg_value, fill = avg_value)) +
     geom_bar(stat = "identity") +
-    #geom_shadowtext(aes(label = word), colour = "black", hjust = 0, nudge_x = 0.3) +
+    geom_shadowtext(aes(label = word), position = position_stack(vjust= 0.5), colour = "black") +
     geom_text(aes(label = word),position = position_stack(vjust= 0.5), colour = "white") + 
     theme_minimal()  +
     theme(axis.text.y = element_blank()) +

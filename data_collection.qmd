@@ -234,88 +234,6 @@ write.csv(return_on_assets_tidy, file = "return_on_assets_tidy.csv", row.names =
 
 ```{r}
 library(nytimes)
-
-nytimes_key("csHR8NIDuVovzJ9A15iyiEmR7aVAGBK9")
-
-archive <- ny_archive(2014, 1)
-
-main_headlines <- list()
-dates <- list()
-
-for(i in archive){
-  main_headline <- i$headline$main
-  pub_date <- i$pub_date
-  main_headlines <- c(main_headlines, main_headline)
-  dates <- c(dates, pub_date)
-}
-
-tesla_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-warnerB_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-toyota_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-netflix_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-meta_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-honda_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-google_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-freshDelMonte_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-elevHealth_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-disney_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-unitedHealth_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-cvs_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-baidu_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-adecoagro_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-archerDaniels_headlines_all<- data.frame(Main_Headline = unlist(main_headlines),
-                                Date = unlist(dates))
-
-tesla_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Tesla"))
-warnerB_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Warner Bros"))
-toyota_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Toyota"))
-netflix_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Netflix"))
-meta_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Meta"))
-honda_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Honda"))
-google_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Google"))
-freshDelMonte_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "Fresh del monte"))
-elevHealth_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "elevenace health"))
-disney_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "walt disney"))
-unitedHealth_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "United health group"))
-cvs_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "CVS"))
-baidu_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "baidu"))
-adecoagro_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "adecoagro"))
-archerDaniels_headlines <- filter(main_headlines_df, str_detect(Main_Headline, "archer daniels"))
-
-tesla_headlines_all <- bind_rows(tesla_headlines_all, tesla_headlines)
-warnerB_headlines_all <- bind_rows(warnerB_headlines_all, warnerB_headlines)
-toyota_headlines_all <- bind_rows(toyota_headlines_all, toyota_headlines)
-netflix_headlines_all <- bind_rows(netflix_headlines_all, netflix_headlines)
-meta_headlines_all <- bind_rows(meta_headlines_all, meta_headlines)
-honda_headlines_all <- bind_rows(honda_headlines_all, honda_headlines)
-google_headlines_all <- bind_rows(google_headlines_all, google_headlines)
-freshDelMonte_headlines_all <- bind_rows(freshDelMonte_headlines_all, freshDelMonte_headlines)
-elevHealth_headlines_all <- bind_rows(elevHealth_headlines_all, elevHealth_headlines)
-disney_headlines_all <- bind_rows(disney_headlines_all, disney_headlines)
-unitedHealth_headlines_all <- bind_rows(unitedHealth_headlines_all, unitedHealth_headlines)
-cvs_headlines_all <- bind_rows(cvs_headlines_all, cvs_headlines)
-baidu_headlines_all <- bind_rows(baidu_headlines_all, baidu_headlines)
-adecoagro_headlines_all <- bind_rows(adecoagro_headlines_all, adecoagro_headlines)
-archerDaniels_headlines_all <- bind_rows(archerDaniels_headlines_all, archerDaniels_headlines)
-
-```
-
-```{r}
-library(nytimes)
 library(dplyr)
 library(stringr)
 
@@ -348,7 +266,6 @@ for (year in years) {
       main_headline <- i$headline$main
       pub_date <- i$pub_date
       
-      # Filter headlines for each company
       if (str_detect(main_headline, "Tesla")) {
         tesla_headlines_all <- bind_rows(tesla_headlines_all, data.frame(Main_Headline = main_headline, Date = pub_date))
       } else if (str_detect(main_headline, "Warner Bros")) {
@@ -494,33 +411,9 @@ for (i in seq_along(data_token)) {
   headlines_all <- bind_rows(headlines_all, test)
 }
 
-#all headlines - one dataset
+write.csv(headlines_all, file = "all_headlines_tidy.csv", row.names = FALSE)
+all_headlines_tidy<-read.csv("all_headlines_tidy.csv")
 
-```
-
-
-
-
-```{r}
-dtm_freq <- as.matrix(dtm)
-
-# Apply PCA
-pca_result <- prcomp(dtm_freq, scale. = TRUE)
-
-# Extract the PCA scores
-pca_scores <- as.data.frame(pca_result$x)
-
-# Add sentiment scores to the PCA scores data frame
-pca_scores$sentiment <- sentiment_scores
-
-# Optionally, apply clustering
-# clustering <- kmeans(pca_scores, centers = k)
-
-# Plot the PCA scores
-ggplot(pca_scores, aes(x = PC1, y = PC2, color = sentiment)) +
-  geom_point() +
-  labs(x = "PC1", y = "PC2", color = "Sentiment") +
-  theme_minimal()
 ```
 
 
@@ -550,21 +443,5 @@ comp_hq_tidy <- comp_hq |>
 write.csv(comp_hq_tidy, file = "companies_hq.csv", row.names = FALSE)
 
 companies_hq <- read_csv("companies_hq.csv")
-
-library(leaflet)
-
-leaflet(companies_hq) %>%
-  addTiles() %>%
-  addCircleMarkers(
-    data = companies_hq,
-    lat = ~latitude,
-    lng = ~longitude,
-    radius = ~sqrt(revenue) / 100,
-    fillColor = "blue",
-    fillOpacity = 0.4,
-    popup = ~paste0("<b>Company:</b> ", company, "<br>",
-                    "<b>Address:</b> ", address, "<br>",
-                    "<b>Revenue:</b> $", format(revenue, big.mark = ","))
-  )
 
 ```
