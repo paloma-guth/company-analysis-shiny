@@ -2,8 +2,8 @@
 title: "Companies analysis"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
-    vertical_layout: scroll 
+    orientation: column
+    vertical_layout: fill
 runtime: shiny
 ---
 
@@ -17,44 +17,65 @@ library(leaflet)
 library(grid)
 library(tidyverse)
 library(shadowtext)
+library(plotly)
+library(gganimate)
+library(orca)
 
-current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
-return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
-debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
-all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
-companies_hq <- read_csv("companies_hq.csv")
-
-get_top_words <- function(data, company, year, n = 5) {
-  data %>%
-    filter(company == company, year == year) %>%
-    count(word, sort = TRUE) %>%
-    top_n(n, n) %>%
-    arrange(desc(n))
-}
+current_ratio_tidy <- read.csv("current_ratio_tidy2.csv")
+return_on_assets_tidy <- read_csv("return_on_assets_tidy2.csv")
+debt_ratio_tidy <- read_csv("debt_ratio_tidy2.csv")
+all_headlines_tidy <- read_csv("all_headlines_tidy2.csv")
+companies_hq <- read_csv("companies_hq2.csv")
+revenue_tidy<-read.csv("revenue_tidy2.csv")
 
 #everything is in millions USD
 #Fiscal year is January - December
+
+m <- list(
+  l = 50,
+  r = 50,
+  b = 50,
+  t = 50
+  )
+
+sector_mapping <- list("All" = "All", 
+                     "Technology" = "internet_content", 
+                     "Entertainment" = "entertainment",
+                     "Healthcare" = "health_plan",
+                     "Automobile Manufactures" = "auto_manufactures",
+                     "Farm Products" = "farm_products")
+
 ```
 
 Introduction
 ==========================
 
+
 Explain why we choose this analysis
 
 ```{r}
 leaflet(companies_hq) %>%
-  addTiles() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%  # Change the map style
   addCircleMarkers(
     data = companies_hq,
     lat = ~latitude,
     lng = ~longitude,
-    radius = ~sqrt(revenue) / 100, #resize
-    fillColor = "blue",
-    fillOpacity = 0.4,
+    radius = ~sqrt(revenue) / 100, # Resize
+    color = "#FFC20C",  # Set marker color
+    fillOpacity = 0.5,  # Adjust marker opacity
+    stroke = FALSE,  # Remove marker stroke
     popup = ~paste0("<b>Company:</b> ", company, "<br>",
                     "<b>Address:</b> ", address, "<br>",
                     "<b>Revenue:</b> $", format(revenue, big.mark = ","))
+  ) %>%
+  addLegend(  # Add legend for marker size
+    position = "bottomright",
+    colors = "#FFC20C",
+    labels = c("Revenue"),
+    title = "Marker Size",
+    opacity = 1
   )
+
 ```
 
 
@@ -66,33 +87,57 @@ Row {.tabset .tabset-fade}
 -------------------------
 ### Current Ratio
 
-```{r echo=FALSE}
+```{r}
 inputPanel(
-  selectInput("sector", label = "Select Sector:", choices = c("All", unique(current_ratio_tidy$sector))),
+  selectInput("sector1", 
+              label = "Select Sector:", 
+              choices = c("All", "Technology", "Entertainment", "Healthcare", "Automobile Manufactures", "Farm Products")),
   uiOutput("company_select")
 )
+```
 
-renderPlot({
+```{r}
+
+renderPlotly({
   filtered_data <- current_ratio_tidy
   
-  if (input$sector != "All") {
-    filtered_data <- filtered_data %>%
-      filter(sector == input$sector)
+  selected_sector_column <- sector_mapping[input$sector1] 
+  
+  if (selected_sector_column != "All") {
+    filtered_data <- filtered_data |>
+      filter(sector==selected_sector_column)  # Filter using the selected column
   }
   
   filtered_data$year <- as.factor(filtered_data$year)
   
-  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
-    geom_line(aes(group = company)) +
-    geom_point() +
-    theme_minimal() +
-    labs(
-      x = "Year",
-      y = "Debt Ratio",
-      title = "Debt Ratio by Company Over Time",
-      color = "Company"
-    ) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  fig <- filtered_data|>
+    plot_ly( x = ~year,
+            y = ~debt_ratio, 
+            color = ~fct_reorder2(company, year, debt_ratio),
+            type = 'scatter', 
+            mode = 'lines+markers', 
+            text = ~paste(company, ", ", year, "<br>", "Debt Ratio: ", round(debt_ratio, 2)), 
+            hoverinfo = 'text', 
+            width = 1000, 
+            height = 450) |>
+    layout( title = "Debt Ratio by Company Over Time",
+      yaxis = list(
+        title = "Debt Ratio",
+        zeroline = FALSE,
+        tickprefix = "",
+        margin=m),
+      xaxis = list(
+        title = "Year",
+        zeroline = FALSE,
+        showgrid = FALSE,
+        tickangle = 45
+      ),
+      legend = list(
+        title = list(text = "Companies")
+      )
+    )
+  
+  fig
 })
 ```
 
@@ -100,31 +145,54 @@ renderPlot({
 ### Debt ratio
 ```{r echo=FALSE}
 inputPanel(
-  selectInput("sector2", label = "Select Sector:", choices = c("All", unique(debt_ratio_tidy$sector))),
+  selectInput("sector2", 
+              label = "Select Sector:", 
+              choices = c("All", "Technology", "Entertainment", "Healthcare", "Automobile Manufactures", "Farm Products")),
   uiOutput("company_select2")
 )
+```
 
-renderPlot({
+```{r}
+renderPlotly({
   filtered_data <- debt_ratio_tidy
   
-  if (input$sector2 != "All") {
-    filtered_data <- filtered_data %>%
-      filter(sector == input$sector2)
+  selected_sector_column <- sector_mapping[input$sector2] 
+  
+  if (selected_sector_column != "All") {
+    filtered_data <- filtered_data |>
+      filter(sector==selected_sector_column)  # Filter using the selected column
   }
   
   filtered_data$year <- as.factor(filtered_data$year)
   
-  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
-    geom_line(aes(group = company)) +
-    geom_point() +
-    theme_minimal() +
-    labs(
-      x = "Year",
-      y = "Debt Ratio",
-      title = "Debt Ratio by Company Over Time",
-      color = "Company"
-    )+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  fig2 <- filtered_data|>
+    plot_ly( x = ~year,
+            y = ~debt_ratio, 
+            color = ~fct_reorder2(company, year, debt_ratio),
+            type = 'scatter', 
+            mode = 'lines+markers', 
+            text = ~paste(company, ", ", year, "<br>", "Debt Ratio: ", round(debt_ratio, 2)), 
+            hoverinfo = 'text', 
+            width = 1000, 
+            height = 450) |>
+    layout( title = "Debt Ratio by Company Over Time",
+      yaxis = list(
+        title = "Debt Ratio",
+        zeroline = FALSE,
+        tickprefix = "",
+        margin=m),
+      xaxis = list(
+        title = "Year",
+        zeroline = FALSE,
+        showgrid = FALSE,
+        tickangle = 45
+      ),
+      legend = list(
+        title = list(text = "Companies")
+      )
+    )
+  
+  fig2
 })
 ```
 
@@ -132,33 +200,55 @@ renderPlot({
 
 ```{r echo=FALSE}
 inputPanel(
-  selectInput("sector3", label = "Select Sector:", choices = c("All", unique(return_on_assets_tidy$sector))),
+  selectInput("sector3", 
+              label = "Select Sector:", 
+              choices = c("All", "Technology", "Entertainment", "Healthcare", "Automobile Manufactures", "Farm Products")),
   uiOutput("company_select3")
 )
+```
 
-renderPlot({
+```{r}
+renderPlotly({
   filtered_data <- return_on_assets_tidy
   
-  if (input$sector3 != "All") {
-    filtered_data <- filtered_data %>%
-      filter(sector == input$sector3)
+  selected_sector_column <- sector_mapping[input$sector3] 
+  
+  if (selected_sector_column != "All") {
+    filtered_data <- filtered_data |>
+      filter(sector==selected_sector_column)  # Filter using the selected column
   }
   
   filtered_data$year <- as.factor(filtered_data$year)
   
-  ggplot(filtered_data, aes(x=year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
-    geom_line(aes(group = company)) +
-    geom_point() +
-    theme_minimal() +
-    labs(
-      x = "Year",
-      y = "Debt Ratio",
-      title = "Debt Ratio by Company Over Time",
-      color = "Company"
-    )+
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  fig3 <- filtered_data|>
+    plot_ly( x = ~year,
+            y = ~debt_ratio, 
+            color = ~fct_reorder2(company, year, debt_ratio),
+            type = 'scatter', 
+            mode = 'lines+markers', 
+            text = ~paste(company, ", ", year, "<br>", "Debt Ratio: ", round(debt_ratio, 2)), 
+            hoverinfo = 'text', 
+            width = 1000, 
+            height = 450) |>
+    layout( title = "Debt Ratio by Company Over Time",
+      yaxis = list(
+        title = "Debt Ratio",
+        zeroline = FALSE,
+        tickprefix = "",
+        margin=m),
+      xaxis = list(
+        title = "Year",
+        zeroline = FALSE,
+        showgrid = FALSE,
+        tickangle = 45
+      ),
+      legend = list(
+        title = list(text = "Companies")
+      )
+    )
+  
+  fig3
 })
-
 ```
 
 News headlines
@@ -167,13 +257,15 @@ News headlines
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Chart A
+### Average Sentiment Trends by Company
 
 ```{r}
 inputPanel(
   selectInput("year", label = "Select Year:", choices = unique(all_headlines_tidy$year))
 )
+```
 
+```{r fig.height=400, fig.width=600}
 renderPlot({
   filtered_data <- all_headlines_tidy %>% filter(year == input$year)
   sentiment_by_company <- filtered_data %>%
@@ -188,19 +280,17 @@ renderPlot({
     geom_errorbar(aes(ymin = avg_sentiment - sd_sentiment, ymax = avg_sentiment + sd_sentiment), width = 0.2) +
     scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
     theme_minimal() +
-    ggtitle("Average Sentiment Trends by Company") +
-    xlab("Company") +
-    ylab("Average Sentiment") +
+    labs(title = "", x= "Company", y= "Average Sentiment", fill = "Sentiment \n score") +
     coord_flip()
-})
+}, height = 480, width = 700)
 ```
 
 Column {data-width=350}
 -----------------------------------------------------------------------
 
-### Chart B
+### Top 5 Words by Company and Year
 
-```{r}
+```{r fig.height=400, fig.width=600}
 inputPanel(
   selectInput("year2", label = "Select Year:", choices = unique(all_headlines_tidy$year)),
   selectInput("company2", label = "Select Company:", choices = unique(all_headlines_tidy$company))
@@ -226,7 +316,7 @@ renderPlot({
     theme_minimal()  +
     theme(axis.text.y = element_blank()) +
     scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
-    labs(title = "Top 5 Words by Company and Year", x = "", y = "") +
+    labs(title = "", x = "", y = "", fill="Sentiment \n score") +
     coord_flip()
-})
+}, height = 430, width = 380)
 ```
