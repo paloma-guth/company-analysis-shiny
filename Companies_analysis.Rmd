@@ -342,3 +342,9 @@ This analysis has a few key limitations. Firstly, it relies on news headlines fr
 
 This comprehensive analysis combines financial data with sentiment analysis to offer a multi-faceted view of each company's performance and public image. By examining both quantitative and qualitative aspects, we aim to provide valuable insights into the current state and future prospects of these companies within their respective sectors.
 
+#### Sources
+- New York Times API
+- List of All Stock Ticker Symbols - Stock Analysis. (n.d.). Stock Analysis. https://stockanalysis.com/stocks
+
+Students: Paloma Guth Kronbauer and Zumratmo Zarifkhonova
+
