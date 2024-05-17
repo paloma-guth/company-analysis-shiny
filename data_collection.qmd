@@ -445,3 +445,64 @@ write.csv(comp_hq_tidy, file = "companies_hq.csv", row.names = FALSE)
 companies_hq <- read_csv("companies_hq.csv")
 
 ```
+
+
+### tidying it up - everything we will use
+
+```{r}
+current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
+return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
+debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
+all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
+companies_hq <- read_csv("companies_hq.csv")
+
+revenue<-read.csv("revenue.csv")
+revenue_tidy <- revenue |>
+  pivot_longer(cols = -year, names_to = "company", values_to = "revenue")
+
+companies<-list(current_ratio_tidy, return_on_assets_tidy, debt_ratio_tidy, all_headlines_tidy, companies_hq, revenue_tidy)
+
+for(i in seq_along(companies)){
+ companies[[i]] <- companies[[i]]|> 
+  mutate(company = case_when(
+    company == "meta" ~ "Meta",
+    company == "baidu" ~ "Baidu",
+    company == "warner_bros_discovery" ~ "Warner Bros",
+    company == "toyota_motor" ~ "Toyota",
+    company == "honda_motor" ~ "Honda",
+    company == "cvs" ~ "CVS",
+    company == "fresh_del_monte" ~ "Fresh del Monte",
+    company == "tesla" ~ "Tesla",
+    company == "walt_disney_cia" ~ "Walt Disney",
+    company == "archer_daniels_midland" ~ "Archer Daniels Midland",
+    company == "netflix" ~ "Netflix",
+    company == "adecoagro" ~ "Adecoagro", 
+    company == "elevance_health" ~ "Elevance Health",
+    company == "united_health_group" ~ "United Health Group",
+    company == "google" ~ "Google",
+    company == "disney" ~ "Walt Disney",
+    company == "honda" ~ "Honda",
+    company == "toyota" ~ "Toyota",
+    company == "warnerB" ~ "Warner Bros",
+    TRUE ~ company
+  )) 
+}
+
+
+current_ratio_tidy <- companies[[1]]
+return_on_assets_tidy <- companies[[2]]
+debt_ratio_tidy <- companies[[3]]
+all_headlines_tidy <- companies[[4]]
+companies_hq <- companies[[5]]
+revenue_tidy<- companies[[6]]
+
+write.csv(current_ratio_tidy, file = "current_ratio_tidy2.csv", row.names = FALSE)
+write.csv(debt_ratio_tidy, file = "debt_ratio_tidy2.csv", row.names = FALSE)
+write.csv(return_on_assets_tidy, file = "return_on_assets_tidy2.csv", row.names = FALSE)
+write.csv(all_headlines_tidy, file = "all_headlines_tidy2.csv", row.names = FALSE)
+write.csv(companies_hq, file = "companies_hq2.csv", row.names = FALSE)
+write.csv(revenue_tidy, file = "revenue_tidy2.csv", row.names = FALSE)
+
+
+```
+

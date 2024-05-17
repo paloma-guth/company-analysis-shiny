@@ -1,5 +1,5 @@
 ---
-title: "Graphs for "
+title: "Graphs for the Company Analysis "
 format: html
 editor: visual
 ---
@@ -53,6 +53,7 @@ datasets <- list(
 )
 
 all_companies_data <- bind_rows(datasets, .id = "company")
+write.csv(all_companies_data, file="revenue_analysis.csv", row.names = FALSE)
 
 ```
 
@@ -78,35 +79,12 @@ generate_plot <- function(data, selected_company) {
 
 ```
 
-```{r}
-library(shiny)
-
-
-ui <- fluidPage(
-  titlePanel("Company Financial Metrics Overview"),
-  selectInput("company_choice", "Select a Company:", choices = unique(summarized_data$company)),
-  plotOutput("company_plot")
-)
-
-
-server <- function(input, output) {
-  output$company_plot <- renderPlot({
-    generate_plot(summarized_data, input$company_choice)
-  })
-}
-
-
-shinyApp(ui = ui, server = server)
-
-```
-
 **Bar Plot and insights based on the balance sheet**
 
 ```{r}
 library(dplyr)
 library(tidyr)
 
-# List of all balance sheet datasets with company identifiers
 balance_datasets <- list(
   wbd = wbd_balance_sheet,
   tsla = tsla_balance_sheet,
@@ -125,8 +103,9 @@ balance_datasets <- list(
   adm = adm_balance_sheet
 )
 
-# Combine all balance sheet datasets into one
 all_balance_data <- bind_rows(balance_datasets, .id = "company")
+
+write.csv(all_balance_data , file="debt_analysis.csv", row.names = FALSE)
 
 ```
 
@@ -153,22 +132,3 @@ generate_balance_plot <- function(data, selected_company) {
 }
 
 ```
-```{r}
-library(shiny)
-
-ui <- fluidPage(
-  titlePanel("Company Balance Sheet Overview"),
-  selectInput("company_choice", "Select a Company:", choices = unique(summarized_balance_data$company)),
-  plotOutput("balance_plot")
-)
-
-server <- function(input, output) {
-  output$balance_plot <- renderPlot({
-    generate_balance_plot(summarized_balance_data, input$company_choice)
-  })
-}
-
-shinyApp(ui = ui, server = server)
-
-```
-
