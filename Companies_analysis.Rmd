@@ -3,7 +3,7 @@ title: "Companies analysis"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
-    vertical_layout: scroll 
+    vertical_layout: fill 
 runtime: shiny
 ---
 
@@ -17,21 +17,44 @@ library(leaflet)
 library(grid)
 library(tidyverse)
 library(shadowtext)
+library(forcats)
 
 current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
 return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
 debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
 all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
 companies_hq <- read_csv("companies_hq.csv")
+all_balance_data <- read_csv("debt_analysis.csv")
+all_income_data <- read_csv("revenue_anlysis.csv")
 
-get_top_words <- function(data, company, year, n = 5) {
-  data %>%
-    filter(company == company, year == year) %>%
-    count(word, sort = TRUE) %>%
-    top_n(n, n) %>%
-    arrange(desc(n))
+
+
+#get_top_words <- function(data, company, year, n = 5) {
+ # data %>%
+#    filter(company == company, year == year) %>%
+#    count(word, sort = TRUE) %>%
+#    top_n(n, n) %>%
+#    arrange(desc(n))
+#}
+
+all_balance_data <- read_csv("debt_analysis.csv")
+
+# Summarize the balance sheet data
+summarized_balance_data <- all_balance_data %>%
+  group_by(company) %>%
+  summarise(across(c(total_current_assets, total_debt, total_liabilities, shareholders_equity), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(total_current_assets, total_debt, total_liabilities, shareholders_equity),
+               names_to = "variable",
+               values_to = "value")
+
+generate_balance_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Balance Sheet for", selected_company),
+         x = "Balance Sheet Item", y = "Summed Value") +
+    theme_minimal()
 }
-
 #everything is in millions USD
 #Fiscal year is January - December
 ```
@@ -229,4 +252,103 @@ renderPlot({
     labs(title = "Top 5 Words by Company and Year", x = "", y = "") +
     coord_flip()
 })
+```
+
+
+
+Column
+-----------------------------------------------------------------------
+
+
+
+Debt Analysis
+==========================
+dhjdhagdhasgdha
+
+Row {.tabset .tabset-fade}
+-------------------------
+### Summary of Balance Sheet
+
+
+```{r}
+# Ensure summarized_balance_data is correctly defined
+all_balance_data <- read_csv("debt_analysis.csv")
+
+summarized_balance_data <- all_balance_data %>%
+  group_by(company) %>%
+  summarise(across(c(total_current_assets, total_debt, total_liabilities, shareholders_equity), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(total_current_assets, total_debt, total_liabilities, shareholders_equity),
+               names_to = "variable",
+               values_to = "value")
+
+# Function to generate the balance plot
+generate_balance_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Balance Sheet for", selected_company),
+         x = "Balance Sheet Item", y = "Summed Value") +
+    theme_minimal()
+}
+```
+
+
+
+```{r}
+# Add input panel for company selection
+inputPanel(
+  selectInput("selected_company", "Select Company:", choices = unique(summarized_balance_data$company))
+)
+
+# Render the balance plot based on selected company
+renderPlot({
+  req(input$selected_company) # Ensure the input is available
+  generate_balance_plot(summarized_balance_data, input$selected_company)
+})
+
+
+```
+
+
+
+```{r}
+# Ensure summarized_balance_data is correctly defined
+all_income_data <- read_csv("revenue_anlysis.csv")
+
+summarized_income_data <- all_income_data %>%
+  group_by(company) %>%
+  summarise(across(c(revenue, gross_profit, operating_income, ebit), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(revenue, gross_profit, operating_income, ebit),
+               names_to = "variable",
+               values_to = "value")
+
+# Function to generate the balance plot
+generate_income_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Income Statement Sheet for", selected_company),
+         x = "Income State Sheet", y = "Summed Value") +
+    theme_minimal()
+}
+```
+
+
+
+
+### Summary of Income Statement
+
+```{r}
+# Add input panel for company selection
+inputPanel(
+  selectInput("selected_company", "Select Company:", choices = unique(summarized_income_data$company))
+)
+
+# Render the balance plot based on selected company
+renderPlot({
+  req(input$selected_company) # Ensure the input is available
+  generate_income_plot(summarized_income_data, input$selected_company)
+})
+
+
 ```
