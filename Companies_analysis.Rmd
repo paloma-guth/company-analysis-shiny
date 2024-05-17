@@ -263,7 +263,7 @@ Column
 
 Debt Analysis
 ==========================
-dhjdhagdhasgdha
+Text
 
 Row {.tabset .tabset-fade}
 -------------------------
@@ -271,7 +271,6 @@ Row {.tabset .tabset-fade}
 
 
 ```{r}
-# Ensure summarized_balance_data is correctly defined
 all_balance_data <- read_csv("debt_analysis.csv")
 
 summarized_balance_data <- all_balance_data %>%
@@ -281,31 +280,31 @@ summarized_balance_data <- all_balance_data %>%
                names_to = "variable",
                values_to = "value")
 
-# Function to generate the balance plot
 generate_balance_plot <- function(data, selected_company) {
   filtered_data <- data %>% filter(company == selected_company)
   ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
     geom_bar(stat = "identity", position = "dodge") +
     labs(title = paste("Summary of Balance Sheet for", selected_company),
          x = "Balance Sheet Item", y = "Summed Value") +
-    theme_minimal()
+    theme_minimal()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.margin = margin(t = 40, r = 40, b = 70, l = 40))
+  
 }
+
 ```
 
 
 
 ```{r}
-# Add input panel for company selection
 inputPanel(
   selectInput("selected_company", "Select Company:", choices = unique(summarized_balance_data$company))
 )
 
-# Render the balance plot based on selected company
 renderPlot({
   req(input$selected_company) # Ensure the input is available
   generate_balance_plot(summarized_balance_data, input$selected_company)
 })
-
 
 ```
 
@@ -321,15 +320,16 @@ summarized_income_data <- all_income_data %>%
                names_to = "variable",
                values_to = "value")
 
-# Function to generate the income plot
 generate_income_plot <- function(data, selected_company) {
   filtered_data <- data %>% filter(company == selected_company)
   ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
     geom_bar(stat = "identity", position = "dodge") +
     labs(title = paste("Summary of Income Statement for", selected_company),
          x = "Income Statement Item", y = "Summed Value") +
-    theme_minimal()
-}
+    theme_minimal()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          plot.margin = margin(t = 40, r = 40, b = 70, l = 40))}
+
 ```
 
 
@@ -338,12 +338,10 @@ generate_income_plot <- function(data, selected_company) {
 ### Summary of Income Statement
 
 ```{r}
-# Add input panel for company selection
 inputPanel(
   selectInput("selected_company_income", "Select Company:", choices = unique(summarized_income_data$company))
 )
 
-# Render the income plot based on selected company
 renderPlot({
   req(input$selected_company_income) # Ensure the input is available
   generate_income_plot(summarized_income_data, input$selected_company_income)
