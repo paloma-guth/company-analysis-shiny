@@ -312,8 +312,7 @@ renderPlot({
 
 
 ```{r}
-# Ensure summarized_balance_data is correctly defined
-all_income_data <- read_csv("revenue_anlysis.csv")
+all_income_data <- read_csv("revenue_analysis.csv")
 
 summarized_income_data <- all_income_data %>%
   group_by(company) %>%
@@ -322,13 +321,13 @@ summarized_income_data <- all_income_data %>%
                names_to = "variable",
                values_to = "value")
 
-# Function to generate the balance plot
+# Function to generate the income plot
 generate_income_plot <- function(data, selected_company) {
   filtered_data <- data %>% filter(company == selected_company)
   ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(title = paste("Summary of Income Statement Sheet for", selected_company),
-         x = "Income State Sheet", y = "Summed Value") +
+    labs(title = paste("Summary of Income Statement for", selected_company),
+         x = "Income Statement Item", y = "Summed Value") +
     theme_minimal()
 }
 ```
@@ -341,14 +340,17 @@ generate_income_plot <- function(data, selected_company) {
 ```{r}
 # Add input panel for company selection
 inputPanel(
-  selectInput("selected_company", "Select Company:", choices = unique(summarized_income_data$company))
+  selectInput("selected_company_income", "Select Company:", choices = unique(summarized_income_data$company))
 )
 
-# Render the balance plot based on selected company
+# Render the income plot based on selected company
 renderPlot({
-  req(input$selected_company) # Ensure the input is available
-  generate_income_plot(summarized_income_data, input$selected_company)
+  req(input$selected_company_income) # Ensure the input is available
+  generate_income_plot(summarized_income_data, input$selected_company_income)
 })
 
 
 ```
+
+
+
