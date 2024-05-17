@@ -25,7 +25,7 @@ library(leaflet)
 library(grid)
 library(tidyverse)
 library(shadowtext)
-<<<<<<< HEAD
+
 library(forcats)
 
 current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
