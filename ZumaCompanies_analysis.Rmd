@@ -1,0 +1,351 @@
+---
+title: "Companies analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill 
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(leaflet)
+library(grid)
+library(tidyverse)
+library(shadowtext)
+library(forcats)
+
+current_ratio_tidy <- read.csv("current_ratio_tidy.csv")
+return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
+debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
+all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
+companies_hq <- read_csv("companies_hq.csv")
+all_balance_data <- read_csv("debt_analysis.csv")
+all_income_data <- read_csv("revenue_anlysis.csv")
+
+
+
+#get_top_words <- function(data, company, year, n = 5) {
+ # data %>%
+#    filter(company == company, year == year) %>%
+#    count(word, sort = TRUE) %>%
+#    top_n(n, n) %>%
+#    arrange(desc(n))
+#}
+
+all_balance_data <- read_csv("debt_analysis.csv")
+
+# Summarize the balance sheet data
+summarized_balance_data <- all_balance_data %>%
+  group_by(company) %>%
+  summarise(across(c(total_current_assets, total_debt, total_liabilities, shareholders_equity), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(total_current_assets, total_debt, total_liabilities, shareholders_equity),
+               names_to = "variable",
+               values_to = "value")
+
+generate_balance_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Balance Sheet for", selected_company),
+         x = "Balance Sheet Item", y = "Summed Value") +
+    theme_minimal()
+}
+#everything is in millions USD
+#Fiscal year is January - December
+```
+
+Introduction
+==========================
+
+Explain why we choose this analysis
+
+```{r}
+leaflet(companies_hq) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    data = companies_hq,
+    lat = ~latitude,
+    lng = ~longitude,
+    radius = ~sqrt(revenue) / 100, #resize
+    fillColor = "blue",
+    fillOpacity = 0.4,
+    popup = ~paste0("<b>Company:</b> ", company, "<br>",
+                    "<b>Address:</b> ", address, "<br>",
+                    "<b>Revenue:</b> $", format(revenue, big.mark = ","))
+  )
+```
+
+
+Economical analysis
+==========================
+dhjdhagdhasgdha
+
+Row {.tabset .tabset-fade}
+-------------------------
+### Current Ratio
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector", label = "Select Sector:", choices = c("All", unique(current_ratio_tidy$sector))),
+  uiOutput("company_select")
+)
+
+renderPlot({
+  filtered_data <- current_ratio_tidy
+  
+  if (input$sector != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+```
+
+
+### Debt ratio
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector2", label = "Select Sector:", choices = c("All", unique(debt_ratio_tidy$sector))),
+  uiOutput("company_select2")
+)
+
+renderPlot({
+  filtered_data <- debt_ratio_tidy
+  
+  if (input$sector2 != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector2)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x = year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    )+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+```
+
+### Return on Assets
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("sector3", label = "Select Sector:", choices = c("All", unique(return_on_assets_tidy$sector))),
+  uiOutput("company_select3")
+)
+
+renderPlot({
+  filtered_data <- return_on_assets_tidy
+  
+  if (input$sector3 != "All") {
+    filtered_data <- filtered_data %>%
+      filter(sector == input$sector3)
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  ggplot(filtered_data, aes(x=year, y = debt_ratio, color = fct_reorder2(company, year, debt_ratio))) +
+    geom_line(aes(group = company)) +
+    geom_point() +
+    theme_minimal() +
+    labs(
+      x = "Year",
+      y = "Debt Ratio",
+      title = "Debt Ratio by Company Over Time",
+      color = "Company"
+    )+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+
+```
+
+News headlines
+==========================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+inputPanel(
+  selectInput("year", label = "Select Year:", choices = unique(all_headlines_tidy$year))
+)
+
+renderPlot({
+  filtered_data <- all_headlines_tidy %>% filter(year == input$year)
+  sentiment_by_company <- filtered_data %>%
+    group_by(company, year) %>%
+    summarise(
+      avg_sentiment = mean(value, na.rm = TRUE),
+      sd_sentiment = sd(value, na.rm = TRUE) / sqrt(n())
+    )
+  
+  ggplot(sentiment_by_company, aes(x = company, y = avg_sentiment, fill = avg_sentiment)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymin = avg_sentiment - sd_sentiment, ymax = avg_sentiment + sd_sentiment), width = 0.2) +
+    scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
+    theme_minimal() +
+    ggtitle("Average Sentiment Trends by Company") +
+    xlab("Company") +
+    ylab("Average Sentiment") +
+    coord_flip()
+})
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+inputPanel(
+  selectInput("year2", label = "Select Year:", choices = unique(all_headlines_tidy$year)),
+  selectInput("company2", label = "Select Company:", choices = unique(all_headlines_tidy$company))
+)
+
+renderPlot({
+  
+  filtered_data <- all_headlines_tidy %>%
+    filter(company == input$company2, year == input$year2)
+  
+  top_words <- filtered_data %>%
+    group_by(word) %>%
+    summarise(
+      occurrences = n(),
+      avg_value = mean(value)
+    ) %>%
+    arrange(desc(occurrences)) %>%
+    slice_head(n = 5)
+  
+  ggplot(top_words, aes(x = reorder(word, occurrences), y = avg_value, fill = avg_value)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = word),position = position_stack(vjust= 0.5), colour = "white") + 
+    theme_minimal()  +
+    theme(axis.text.y = element_blank()) +
+    scale_fill_gradient2(low = "#0C7BDC", mid = "gray", high = "#FFC20A", midpoint = 0) +
+    labs(title = "Top 5 Words by Company and Year", x = "", y = "") +
+    coord_flip()
+})
+```
+
+
+
+Column
+-----------------------------------------------------------------------
+
+
+
+Debt Analysis
+==========================
+Text
+
+Row {.tabset .tabset-fade}
+-------------------------
+
+### Summary of Balance Sheet
+
+```{r}
+all_balance_data <- read_csv("debt_analysis.csv")
+
+summarized_balance_data <- all_balance_data %>%
+  group_by(company) %>%
+  summarise(across(c(total_current_assets, total_debt, total_liabilities, shareholders_equity), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(total_current_assets, total_debt, total_liabilities, shareholders_equity),
+               names_to = "variable",
+               values_to = "value")
+
+generate_balance_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Balance Sheet for", selected_company),
+         x = "Balance Sheet Item", y = "Summed Value") +
+    theme_minimal()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.margin = margin(t = 40, r = 40, b = 70, l = 40))
+  
+}
+
+```
+
+
+
+```{r}
+inputPanel(
+  selectInput("selected_company", "Select Company:", choices = unique(summarized_balance_data$company))
+)
+
+renderPlot({
+  req(input$selected_company) 
+  generate_balance_plot(summarized_balance_data, input$selected_company)
+})
+
+```
+
+
+
+```{r}
+all_income_data <- read_csv("revenue_analysis.csv")
+
+summarized_income_data <- all_income_data %>%
+  group_by(company) %>%
+  summarise(across(c(revenue, gross_profit, operating_income, ebit), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(revenue, gross_profit, operating_income, ebit),
+               names_to = "variable",
+               values_to = "value")
+
+generate_income_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Income Statement for", selected_company),
+         x = "Income Statement Item", y = "Summed Value") +
+    theme_minimal()+
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          plot.margin = margin(t = 40, r = 40, b = 70, l = 40))}
+
+```
+
+
+### Summary of Income Statement
+
+```{r}
+inputPanel(
+  selectInput("selected_company_income", "Select Company:", choices = unique(summarized_income_data$company))
+)
+
+renderPlot({
+  req(input$selected_company_income) 
+  generate_income_plot(summarized_income_data, input$selected_company_income)
+})
+
+```
+
+
+

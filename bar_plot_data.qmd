@@ -1,0 +1,134 @@
+---
+title: "Graphs for the Company Analysis "
+format: html
+editor: visual
+---
+
+```{r}
+data_filtered<- wbd_income_statement|>
+  select(revenue, gross_profit, operating_income, ebit)
+
+summary_data <- wbd_income_statement%>%
+  summarise(across(c(revenue, gross_profit, operating_income, ebit), sum, na.rm = TRUE))
+  
+# Convert the summary data to a long format
+summary_long <- pivot_longer(summary_data, 
+                             cols = c(revenue, gross_profit, operating_income, ebit), 
+                             names_to = "variable", 
+                             values_to = "value")
+summary_long
+```
+
+```{r}
+library(ggplot2)
+
+bar_chart <- ggplot(summary_long, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Summary of Financial Metrics",
+       x = "Financial Metric",
+       y = "Summed Value") +
+  theme_minimal()
+
+print(bar_chart)
+
+```
+
+```{r}
+datasets <- list(
+  wbd = wbd_income_statement,
+  tsla = tsla_income_statement,
+  tm = tm_income_statement,
+  nflx = nflx_income_statement,
+  meta = meta_income_statement,
+  hmc = hmc_income_statement,
+  googl = googl_income_statement,
+  fdp = fdp_income_statement,
+  elv = elv_income_statement,
+  dis = dis_income_statement,
+  cvs = cvs_income_statement,
+  unh = unh_income_statement,
+  bidu = bidu_income_statement,
+  agro = agro_income_statement,
+  adm = adm_income_statement
+)
+
+all_companies_data <- bind_rows(datasets, .id = "company")
+write.csv(all_companies_data, file="revenue_analysis.csv", row.names = FALSE)
+
+```
+
+```{r}
+summarized_data <- all_companies_data %>%
+  group_by(company) %>%
+  summarise(across(c(revenue, gross_profit, operating_income, ebit), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(revenue, gross_profit, operating_income, ebit), 
+               names_to = "variable", 
+               values_to = "value")
+
+library(ggplot2)
+
+
+generate_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Financial Metrics for", selected_company),
+         x = "Financial Metric", y = "Summed Value") +
+    theme_minimal()
+}
+
+```
+
+**Bar Plot and insights based on the balance sheet**
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+balance_datasets <- list(
+  wbd = wbd_balance_sheet,
+  tsla = tsla_balance_sheet,
+  tm = tm_balance_sheet,
+  nflx = nflx_balance_sheet,
+  meta = meta_balance_sheet,
+  hmc = hmc_balance_sheet,
+  googl = googl_balance_sheet,
+  fdp = fdp_balance_sheet,
+  elv = elv_balance_sheet,
+  dis = dis_balance_sheet,
+  cvs = cvs_balance_sheet,
+  unh = unh_balance_sheet,
+  bidu = bidu_balance_sheet,
+  agro = agro_balance_sheet,
+  adm = adm_balance_sheet
+)
+
+all_balance_data <- bind_rows(balance_datasets, .id = "company")
+
+write.csv(all_balance_data , file="debt_analysis.csv", row.names = FALSE)
+
+```
+
+```{r}
+summarized_balance_data <- all_balance_data %>%
+  group_by(company) %>%
+  summarise(across(c(total_current_assets, total_debt, total_liabilities, shareholders_equity), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(total_current_assets, total_debt, total_liabilities, shareholders_equity),
+               names_to = "variable",
+               values_to = "value")
+
+library(ggplot2)
+
+```
+
+```{r}
+generate_balance_plot <- function(data, selected_company) {
+  filtered_data <- data %>% filter(company == selected_company)
+  ggplot(filtered_data, aes(x = variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = paste("Summary of Balance Sheet for", selected_company),
+         x = "Balance Sheet Item", y = "Summed Value") +
+    theme_minimal()
+}
+
+```

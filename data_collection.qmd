@@ -455,12 +455,45 @@ return_on_assets_tidy <- read_csv("return_on_assets_tidy.csv")
 debt_ratio_tidy <- read_csv("debt_ratio_tidy.csv")
 all_headlines_tidy <- read_csv("all_headlines_tidy.csv")
 companies_hq <- read_csv("companies_hq.csv")
+all_balance_data <- read_csv("debt_analysis.csv")
+all_income_data <- read_csv("revenue_analysis.csv")
 
 revenue<-read.csv("revenue.csv")
 revenue_tidy <- revenue |>
   pivot_longer(cols = -year, names_to = "company", values_to = "revenue")
 
-companies<-list(current_ratio_tidy, return_on_assets_tidy, debt_ratio_tidy, all_headlines_tidy, companies_hq, revenue_tidy)
+all_income_data <- all_income_data %>%
+  group_by(company) %>%
+  summarise(across(c(revenue, gross_profit, operating_income, ebit), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(revenue, gross_profit, operating_income, ebit),
+               names_to = "variable",
+               values_to = "value")
+
+all_balance_data <- all_balance_data %>%
+  group_by(company) %>%
+  summarise(across(c(total_current_assets, total_debt, total_liabilities, shareholders_equity), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = c(total_current_assets, total_debt, total_liabilities, shareholders_equity),
+               names_to = "variable",
+               values_to = "value")
+
+companies<-list(current_ratio_tidy, return_on_assets_tidy, debt_ratio_tidy, all_headlines_tidy, companies_hq, revenue_tidy, all_balance_data, all_income_data)
+
+variable<-list(all_balance_data, all_income_data)
+
+for(i in seq_along(variable)){
+  variable[[i]]<-variable[[i]]|>
+    mutate(variable=case_when(
+      variable == "revenue" ~ "Revenue",
+      variable == "gross_profit" ~ "Gross Profit",
+      variable == "operating_income" ~ "Operating Income",
+      variable == "ebit" ~ "EBIT",
+      variable == "total_current_assets" ~ "Current assets",
+      variable == "total_debt" ~ "Debt",
+      variable == "total_liabilities" ~ "Liabilities",
+      variable == "shareholders_equity" ~ "Equity",
+      TRUE ~ variable
+    ))
+}
 
 for(i in seq_along(companies)){
  companies[[i]] <- companies[[i]]|> 
@@ -484,6 +517,19 @@ for(i in seq_along(companies)){
     company == "honda" ~ "Honda",
     company == "toyota" ~ "Toyota",
     company == "warnerB" ~ "Warner Bros",
+    company == "wbd" ~ "Warner Bros",
+    company == "tsla" ~ "Tesla",
+    company == "tm" ~ "Toyota",
+    company == "nflx" ~ "Netflix",
+    company == "hmc" ~ "Honda",
+    company == "googl" ~ "Google",
+    company == "fdp" ~ "Fresh del Monte",
+    company == "elv" ~ "Elevance Health",
+    company == "dis" ~ "Disney",
+    company == "unh" ~ "United Health Group",
+    company == "bidu" ~ "Baidu",
+    company == "agro" ~ "Adecoagro",
+    company == "adm" ~ "Archer Daniels Midland",
     TRUE ~ company
   )) 
 }
@@ -495,6 +541,11 @@ debt_ratio_tidy <- companies[[3]]
 all_headlines_tidy <- companies[[4]]
 companies_hq <- companies[[5]]
 revenue_tidy<- companies[[6]]
+all_balance_data<- companies[[7]]
+all_income_data<- companies[[8]]
+
+all_balance_data<- variable[[1]]
+all_income_data<- variable[[2]]
 
 write.csv(current_ratio_tidy, file = "current_ratio_tidy2.csv", row.names = FALSE)
 write.csv(debt_ratio_tidy, file = "debt_ratio_tidy2.csv", row.names = FALSE)
@@ -502,6 +553,8 @@ write.csv(return_on_assets_tidy, file = "return_on_assets_tidy2.csv", row.names 
 write.csv(all_headlines_tidy, file = "all_headlines_tidy2.csv", row.names = FALSE)
 write.csv(companies_hq, file = "companies_hq2.csv", row.names = FALSE)
 write.csv(revenue_tidy, file = "revenue_tidy2.csv", row.names = FALSE)
+write.csv(all_balance_data, file = "balance_data_tidy.csv", row.names = FALSE)
+write.csv(all_income_data, file = "income_data_tidy.csv", row.names = FALSE)
 
 
 ```
