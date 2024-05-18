@@ -1,0 +1,442 @@
+---
+title: "Companies analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+    theme: 
+      version: 4
+      bootswatch: minty
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(leaflet)
+library(grid)
+library(tidyverse)
+library(shadowtext)
+library(plotly)
+library(scales)
+
+current_ratio_tidy <- read.csv("current_ratio_tidy2.csv")
+return_on_assets_tidy <- read_csv("return_on_assets_tidy2.csv")
+debt_ratio_tidy <- read_csv("debt_ratio_tidy2.csv")
+all_headlines_tidy <- read_csv("all_headlines_tidy2.csv")
+companies_hq <- read_csv("companies_hq2.csv")
+revenue_tidy<-read.csv("revenue_tidy2.csv")
+income_data_tidy <- read_csv("income_data_tidy.csv")
+balance_data_tidy<-read_csv("balance_data_tidy.csv")
+
+m <- list(
+  l = 50,
+  r = 50,
+  b = 50,
+  t = 50
+  )
+
+sector_mapping <- list("All" = "All", 
+                     "Technology" = "internet_content", 
+                     "Entertainment" = "entertainment",
+                     "Healthcare" = "health_plan",
+                     "Automobile Manufactures" = "auto_manufactures",
+                     "Farm Products" = "farm_products")
+
+pallete<-c('#003924', '#0f543c', '#1f7057', '#338d72', '#52aa8e', '#71c8ab', '#a7e2ce', 'darkgray', '#ffdac4', '#ffb3a7', '#fb8a8c', '#eb6574', '#d5405e', '#b81b4a', '#93003a')
+
+```
+
+Introduction
+==========================
+
+Row {data-height=100 }
+-------------------------------------
+
+### Analysis Overview
+
+This analysis examines companies from five sectors: technology, entertainment, healthcare, automobile manufacturers, and farm products. Each sector is represented by three companies.  By analyzing financial data, specifically their balance sheets and income statements, with all data based on a fiscal year running from January to December, we are able to compare and vizualize how each company is performing.
+
+Row 
+-------------------------------------
+
+### Companies geolocation
+
+```{r}
+leaflet(companies_hq) %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%  # Change the map style
+  addCircleMarkers(
+    data = companies_hq,
+    lat = ~latitude,
+    lng = ~longitude,
+    radius = ~sqrt(revenue) / 100, # Resize
+    color = "#FFC20C",  # Set marker color
+    fillOpacity = 0.5,  # Adjust marker opacity
+    stroke = FALSE,  # Remove marker stroke
+    popup = ~paste0("<b>Company:</b> ", company, "<br>",
+                    "<b>Address:</b> ", address, "<br>",
+                    "<b>Revenue:</b> $", format(revenue, big.mark = ","))
+  ) %>%
+  addLegend(  # Add legend for marker size
+    position = "bottomright",
+    colors = "#FFC20C",
+    labels = c("Revenue"),
+    title = "Marker Size",
+    opacity = 1
+  )
+
+```
+
+
+Economical analysis
+==========================
+
+Inputs {.sidebar}
+-------------------------------------
+```{r}
+inputPanel(
+  selectInput("sector1", 
+              label = "Select Sector:", 
+              choices = c("All", "Technology", "Entertainment", "Healthcare", "Automobile Manufactures", "Farm Products")),
+  uiOutput("company_select")
+)
+```
+
+This analysis,is based on data from the Stock Analysis website covering 2014 to 2023 and evaluates key financial metrics like the debt ratio, current ratio and return on assets (ROA) for various companies. The debt ratio indicates financial leverage and risk, with Tesla showing high and increasing debt ratios, reflecting heavy reliance on debt for growth. Meta also shows a rising debt ratio, while Warner Bros displays volatility with significant fluctuations. In contrast, Netflix maintains a moderate and stable debt ratio, and Google has a low and stable ratio, indicating strong financial positions. 
+
+The ROA measures asset efficiency in generating profits. Google exhibits high and stable ROA, indicating efficient asset use and profitability. Meta shows an increasing ROA, suggesting improved asset management. Tesla's ROA is volatile, reflecting fluctuating profitability, while Netflix maintains a consistent ROA, indicating steady asset management. Warner Bros’ fluctuating ROA suggests inconsistent efficiency. Overall, Google and Netflix showcase financial health with low debt and high ROA, while Tesla and Warner Bros exhibit more volatility, highlighting the need for careful financial management.
+
+Row {.tabset .tabset-fade}
+-------------------------
+### Current Ratio
+
+```{r}
+
+renderPlotly({
+  filtered_data <- current_ratio_tidy
+  
+  selected_sector_column <- sector_mapping[input$sector1] 
+  
+  if (selected_sector_column != "All") {
+    filtered_data <- filtered_data |>
+      filter(sector==selected_sector_column)  # Filter using the selected column
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  fig <- filtered_data|>
+    plot_ly( x = ~year,
+            y = ~debt_ratio, 
+            color = ~fct_reorder2(company, year, debt_ratio),
+            colors = pallete,
+            type = 'scatter', 
+            mode = 'lines+markers', 
+            text = ~paste(company, ", ", year, "<br>", "Debt Ratio: ", round(debt_ratio, 2)), 
+            hoverinfo = 'text', 
+            width = 890, 
+            height = 400) |>
+    layout( yaxis = list(
+        title = "Debt Ratio",
+        zeroline = FALSE,
+        tickprefix = "",
+        margin=m),
+      xaxis = list(
+        title = "Year",
+        zeroline = FALSE,
+        showgrid = FALSE,
+        tickangle = 45
+      ),
+      legend = list(
+        title = list(text = "Companies")
+      )
+    )
+  
+  fig
+})
+```
+
+
+### Debt ratio
+
+```{r}
+renderPlotly({
+  filtered_data <- debt_ratio_tidy
+  
+  selected_sector_column <- sector_mapping[input$sector1] 
+  
+  if (selected_sector_column != "All") {
+    filtered_data <- filtered_data |>
+      filter(sector==selected_sector_column)  # Filter using the selected column
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  fig2 <- filtered_data|>
+    plot_ly( x = ~year,
+            y = ~debt_ratio, 
+            color = ~fct_reorder2(company, year, debt_ratio),
+            colors = pallete,
+            type = 'scatter', 
+            mode = 'lines+markers', 
+            text = ~paste(company, ", ", year, "<br>", "Debt Ratio: ", round(debt_ratio, 2)), 
+            hoverinfo = 'text', 
+            width = 890, 
+            height = 400) |>
+    layout( yaxis = list(
+        title = "Debt Ratio",
+        zeroline = FALSE,
+        tickprefix = "",
+        margin=m),
+      xaxis = list(
+        title = "Year",
+        zeroline = FALSE,
+        showgrid = FALSE,
+        tickangle = 45
+      ),
+      legend = list(
+        title = list(text = "Companies")
+      )
+    )
+  
+  fig2
+})
+```
+
+### Return on Assets
+
+```{r}
+renderPlotly({
+  filtered_data <- return_on_assets_tidy
+  
+  selected_sector_column <- sector_mapping[input$sector1] 
+  
+  if (selected_sector_column != "All") {
+    filtered_data <- filtered_data |>
+      filter(sector==selected_sector_column)  # Filter using the selected column
+  }
+  
+  filtered_data$year <- as.factor(filtered_data$year)
+  
+  fig3 <- filtered_data|>
+    plot_ly( x = ~year,
+            y = ~debt_ratio, 
+            color = ~fct_reorder2(company, year, debt_ratio),
+            colors = pallete,
+            type = 'scatter', 
+            mode = 'lines+markers', 
+            text = ~paste(company, ", ", year, "<br>", "Debt Ratio: ", round(debt_ratio, 2)), 
+            hoverinfo = 'text', 
+            width = 890, 
+            height = 400) |>
+    layout(yaxis = list(
+        title = "Debt Ratio",
+        zeroline = FALSE,
+        tickprefix = "",
+        margin=m),
+      xaxis = list(
+        title = "Year",
+        zeroline = FALSE,
+        showgrid = FALSE,
+        tickangle = 45
+      ),
+      legend = list(
+        title = list(text = "Companies")
+      )
+    )
+  
+  fig3
+})
+```
+
+Debt Analysis
+==========================
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r}
+inputPanel(
+  selectInput("selected_company", label = "Select Company:", 
+              choices = unique(balance_data_tidy$company))
+)
+```
+
+This analysis compares key balance sheet metrics such as Total Assets, Total Liabilities, Shareholders' Equity, and Debt Ratio to evaluate the financial stability of various companies.
+
+- **Total Assets**: Amazon shows the highest total assets, reflecting its extensive investment in infrastructure and diverse business operations. Google and Microsoft also have significant assets, indicating strong financial bases.
+- **Total Liabilities**: Amazon leads with the highest liabilities, consistent with its high operational costs and extensive debt usage to fuel growth. Netflix and Google have lower liabilities, indicating more conservative debt management.
+- **Shareholders' Equity**: Google and Microsoft demonstrate substantial shareholders' equity, showcasing strong retained earnings and investor confidence. In contrast, companies like Tesla and Netflix have lower equity, indicating either higher debt levels or lower retained profits.
+- **Debt Ratio**: Amazon and Tesla exhibit higher debt ratios, reflecting greater financial leverage and potential risk. Google maintains a lower debt ratio, indicating a more balanced and stable financial structure.
+
+
+Row {.tabset .tabset-fade}
+-------------------------
+
+### Summary of Balance Sheet
+
+```{r}
+renderPlotly({
+  
+  filtered_data <- balance_data_tidy |> filter(company == input$selected_company)
+  
+  p<-ggplot(filtered_data, aes(x=variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = value), position = position_stack(vjust= 0.85), colour = "black")+
+    labs(title = paste("Summary of Balance Sheet for", input$selected_company),
+         fill = "Balance Sheet Indicator", y = "") +
+    scale_y_continuous(labels = comma_format(big.mark = ".",
+                                           decimal.mark = ","))+
+    scale_fill_manual(values = c('#71c8ab', '#a7e2ce', '#ffdac0', '#ffb3a8'))+
+    theme_minimal() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank()) 
+  
+  ggplotly(p, width = 890, height = 400)
+})
+
+```
+
+
+### Summary of Income Statement
+
+```{r}
+renderPlotly({
+  filtered_data <- income_data_tidy |> filter(company == input$selected_company)
+  
+  p2<-ggplot(filtered_data, aes(x=variable, y = value, fill = variable)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = value), position = position_stack(vjust= 0.7), colour = "black")+
+    labs(title = paste("Summary of Income Sheet for", input$selected_company),
+         fill = "Income Sheet Indicator", y = "") +
+    scale_y_continuous(labels = comma_format(big.mark = ".",
+                                           decimal.mark = ","))+
+    scale_fill_manual(values = c('#71c8ab', '#a7e2ce', '#ffdac0', '#ffb3a8'))+
+    theme_minimal() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank()) 
+  
+  ggplotly(p2, width = 890, height = 400)
+})
+
+```
+
+Row {.tabset .tabset-fade}
+-------------------------
+
+### Balance Sheet Company analysis
+
+##### Financial overview
+
+According to the information on the Balance Sheet, which compared the total assets, liability and debt on the company indicates that Google has one of the highest equaty share at $190 billion and high current assets at $138 billion. On the other hand automobile company Toyota that has its liabilities at the highest number ($363 billion) on the financial statement followed by debt at $244 billion puts the company at much higer risk and lower retain of the profit, even thought their revenue is the highest.
+
+##### Insights:
+Fresh del Monte's significantly higher revenue highlights its extensive market presence and diversified business model. Netflix and Meta exhibit strong gross profit margins, reflecting efficient cost management. Despite Amazon's lower gross margin due to high logistics costs, it maintains operational efficiency. Meta leads in EBIT margin, indicating superior profitability, followed closely by Netflix and Tesla. This suggests that while all three companies effectively manage expenses, Google's profitability is the most robust.
+
+### Income Statement Company analysis
+
+##### Financial overview
+This analysis compares key financial metrics such as Revenue, Gross Profit, Operating Income, and EBIT to evaluate companies' financial health and efficiency. From the bar plots, revenue is highest across all companies, reflecting their market presence. Netflix's revenue of $167 billion and gross profit of $105 billion highlight efficient cost management in content production. Google, with a revenue of $161 billion, shows a similar proportional difference between its financial metrics but with higher gross profit, operating income, and EBIT, indicating higher overall revenue and profitability.
+
+##### Insights:
+Meta's high assets and liabilities underscore its vast scale and aggressive growth strategies, supported by extensive debt financing. Meta and Microsoft exhibit strong equity and lower debt ratios, indicating robust financial health and conservative debt management. Tesla and Netflix show higher financial leverage, highlighting more aggressive growth funded by debt, which entails higher risk but potential for significant returns.
+
+
+News headlines
+==========================
+
+Row {data-height=190}
+-------------------------------------
+
+### New York Times API
+
+This analysis is based on headlines from The New York Times, collected using their API for the period from 2014 to 2023. This time range was chosen to align with the available data for the economic analysis, balance sheet, and income statement. Since The New York Times is a U.S.-based publication, the analysis includes companies with significant U.S. or global influence. Therefore, some influential non-U.S. companies like Toyota are included, while others that are less relevant to U.S. readers may not be.It is important to note that some major companies, such as Meta and Google, may not appear in this analysis. This absence could be due to the headlines not explicitly mentioning the companies' names, despite The New York Times possibly covering news about them. The specific phrasing of headlines can result in the exclusion of certain companies from the dataset.
+
+Row {data-height=650}
+-------------------------------------
+
+### Average Sentiment Trends by Company
+
+```{r}
+inputPanel(
+  selectInput("year", label = "Select Year:", choices = unique(all_headlines_tidy$year))
+)
+```
+
+```{r fig.height=400, fig.width=600}
+renderPlot({
+  filtered_data <- all_headlines_tidy %>% filter(year == input$year)
+  sentiment_by_company <- filtered_data %>%
+    group_by(company, year) %>%
+    summarise(
+      avg_sentiment = mean(value, na.rm = TRUE),
+      sd_sentiment = sd(value, na.rm = TRUE) / sqrt(n())
+    )
+  
+  ggplot(sentiment_by_company, aes(x = company, y = avg_sentiment, fill = avg_sentiment)) +
+    geom_bar(stat = "identity") +
+    geom_errorbar(aes(ymin = avg_sentiment - sd_sentiment, ymax = avg_sentiment + sd_sentiment), width = 0.2) +
+    scale_fill_gradient2(low = "#73CAAC", mid = "gray", high = "#E4B559", midpoint = 0) +
+    theme_minimal() +
+    labs(title = "", x= "Company", y= "Average Sentiment", fill = "Sentiment \n score") +
+    coord_flip()
+}, height = 500, width = 550)
+```
+
+### Top 5 Words by Company and Year
+
+```{r}
+inputPanel(
+  selectInput("year2", label = "Select Year:", choices = unique(all_headlines_tidy$year)),
+  selectInput("company2", label = "Select Company:", choices = unique(all_headlines_tidy$company))
+)
+```
+
+```{r fig.height=400, fig.width=600}
+renderPlot({
+  
+  filtered_data <- all_headlines_tidy |>
+    filter(company == input$company2, year == input$year2)
+  
+  top_words <- filtered_data |>
+    group_by(word) |>
+    summarise(
+      occurrences = n(),
+      avg_value = mean(value)
+    ) |>
+    arrange(desc(occurrences)) |>
+    slice_head(n = 5)
+  
+  ggplot(top_words, aes(x = reorder(word, occurrences), y = avg_value, fill = avg_value)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(label = word),position = position_stack(vjust= 0.5), colour = "white") + 
+    theme_minimal()  +
+    theme(axis.text.y = element_blank()) +
+    scale_fill_gradient2(low = "#73CAAC", mid = "gray", high = "#E4B559", midpoint = 0) +
+    labs(title = "", x = "", y = "Average Sentiment", fill="Sentiment \n score") +
+    coord_flip()
+})
+```
+
+
+Final Consideration
+==========================
+
+#### Limitations
+
+This analysis has a few key limitations. Firstly, it relies on news headlines from the U.S., collected via the New York Times API, which may result in a U.S.-centric perspective. Secondly, the financial data available for the analysis covers a limited time span of nine years. Additionally, we encountered challenges with the API, such as request limits, which restricted the volume of data we could retrieve.
+
+#### Conclusion
+
+This comprehensive analysis combines financial data with sentiment analysis to offer a multi-faceted view of each company's performance and public image. By examining both quantitative and qualitative aspects, we aim to provide valuable insights into the current state and future prospects of these companies within their respective sectors.
+
+#### Sources
+- New York Times API
+- List of All Stock Ticker Symbols - Stock Analysis. (n.d.). Stock Analysis. https://stockanalysis.com/stocks
+
+Students: Paloma Guth Kronbauer and Zumratmo Zarifkhonova
+
